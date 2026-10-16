@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipAI — AI Video Clipping</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center;padding:40px 16px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:36px;max-width:620px;width:100%}
+h1{font-size:28px;margin-bottom:6px}h1 span{color:#2ea043}
+p.sub{color:#8b949e;margin-bottom:24px}
+label{display:block;color:#8b949e;font-size:13px;margin:16px 0 6px}
+input[type=text],input[type=file],select{width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;border-radius:8px;padding:12px;font-size:15px}
+.row{display:flex;gap:12px}.row>div{flex:1}
+button{background:#2ea043;color:#fff;border:0;border-radius:10px;padding:15px;font-size:17px;font-weight:700;width:100%;margin-top:26px;cursor:pointer}
+button:hover{background:#2c974b}
+.hint{font-size:12px;color:#6e7681;margin-top:6px}
+.seg{display:flex;gap:8px}.seg label{flex:1;text-align:center;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;cursor:pointer;margin:0}
+.seg input{display:none}.seg input:checked+span{font-weight:700;color:#2ea043}
+</style></head>
+<body><div class="card">
+<h1>✂️ Clip<span>AI</span></h1>
+<p class="sub">Upload a video — AI finds the viral moments and cuts vertical clips with animated captions.</p>
+<form action="/start" method="post" enctype="multipart/form-data">
+<label>Video file (mp4)</label>
+<input type="file" name="video" accept="video/*" required>
+<label>AI Provider</label>
+<div class="seg">
+<label><input type="radio" name="provider" value="groq" checked><span>⚡ Groq — FREE</span></label>
+<label><input type="radio" name="provider" value="openai"><span>🧠 OpenAI — PAID (smarter)</span></label>
+</div>
+<div class="row">
+<div><label>Groq API key</label><input type="text" name="groq_key" placeholder="gsk_... (or server default)"></div>
+<div><label>OpenAI API key</label><input type="text" name="openai_key" placeholder="sk-... (if OpenAI chosen)"></div>
+</div>
+<div class="row">
+<div><label>Number of clips</label><select name="n_clips"><option>3</option><option>5</option><option>8</option><option>10</option></select></div>
+<div><label>Min length (sec)</label><select name="min_len"><option>15</option><option selected>20</option><option>30</option></select></div>
+<div><label>Max length (sec)</label><select name="max_len"><option>30</option><option>45</option><option selected>50</option><option>60</option></select></div>
+</div>
+<p class="hint">Face-tracked 9:16 crop • word-by-word karaoke captions • original audio</p>
+<button type="submit">🚀 Generate Clips</button>
+</form></div></body></html>
