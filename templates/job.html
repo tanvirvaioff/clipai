@@ -1,0 +1,47 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipAI — Processing</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;padding:32px 16px;display:flex;justify-content:center}
+.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:32px;max-width:760px;width:100%}
+h1{font-size:22px;margin-bottom:16px}
+#log{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;font-family:monospace;font-size:13px;height:220px;overflow-y:auto;white-space:pre-wrap;color:#9fb3c8}
+.clip{display:flex;gap:16px;background:#0d1117;border:1px solid #30363d;border-radius:12px;padding:14px;margin-top:14px;align-items:center}
+.clip video{width:120px;border-radius:8px}
+.clip .meta{flex:1}.clip .meta b{font-size:16px}.clip .meta div{color:#8b949e;font-size:13px;margin-top:4px}
+.dl{background:#2ea043;color:#fff;border-radius:8px;padding:10px 18px;text-decoration:none;font-weight:700}
+.badge{display:inline-block;background:#1f6feb;border-radius:20px;padding:2px 12px;font-size:12px;margin-left:8px}
+</style></head>
+<body><div class="card">
+<h1>⏳ Processing… <span id="st" class="badge">running</span></h1>
+<div id="log">starting…</div>
+<div id="clips"></div>
+</div>
+<script>
+const jid = "{{ jid }}";
+async function poll(){
+  const r = await fetch("/api/job/"+jid); const j = await r.json();
+  document.getElementById("log").textContent = j.log || "starting…";
+  document.getElementById("log").scrollTop = 1e6;
+  const st = document.getElementById("st");
+  st.textContent = j.status;
+  if(j.status === "done"){
+    st.style.background = "#2ea043";
+    document.querySelector("h1").firstChild.textContent = "✅ Done! ";
+    const box = document.getElementById("clips");
+    box.innerHTML = "";
+    (j.result||[]).forEach(c=>{
+      box.innerHTML += `<div class="clip"><video src="/preview/${jid}/${c.file}" controls preload="metadata"></video><div class="meta"><b>${c.title}</b><div>score ${c.score} • ${c.start.toFixed(0)}s–${c.end.toFixed(0)}s</div></div><a class="dl" href="/dl/${jid}/${c.file}">⬇ Download</a></div>`;
+    });
+    return;
+  }
+  if(j.status === "error"){
+    st.style.background = "#da3633";
+    document.getElementById("log").textContent += "\nERROR: " + (j.error||"");
+    return;
+  }
+  setTimeout(poll, 3000);
+}
+poll();
+</script></body></html>
