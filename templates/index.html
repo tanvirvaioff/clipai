@@ -1,83 +1,139 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ClipAI — Turn Long Videos into Viral Shorts</title>
+<title>ClipAI — Generate Viral Clips</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0a0a0f;--card:#14141c;--border:#262633;--acc:#7c3aed;--acc2:#a855f7;--green:#22c55e;--txt:#f1f1f4;--mut:#9a9ab0}
-body{background:radial-gradient(1000px 500px at 50% -100px,#1e1b3a 0%,var(--bg) 60%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding:32px 16px}
-.wrap{max-width:720px;margin:0 auto}
-.logo{text-align:center;margin-bottom:8px;font-size:15px;color:var(--mut);letter-spacing:3px;text-transform:uppercase}
-h1{text-align:center;font-size:38px;font-weight:800;line-height:1.2;margin-bottom:10px}
-h1 .grad{background:linear-gradient(90deg,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
-p.sub{text-align:center;color:var(--mut);font-size:16px;margin-bottom:28px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:16px}
-.tabs{display:flex;gap:8px;margin-bottom:20px}
-.tabs button{flex:1;background:#1e1e2a;border:1px solid var(--border);color:var(--mut);border-radius:12px;padding:12px;font-size:15px;font-weight:600;cursor:pointer}
-.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
-#drop{border:2px dashed #3a3a4d;border-radius:16px;padding:44px 20px;text-align:center;cursor:pointer;transition:.2s}
-#drop:hover,#drop.over{border-color:var(--acc2);background:#1a1626}
-#drop .big{font-size:42px;margin-bottom:10px}
-#drop p{color:var(--mut);font-size:14px}
+:root{--bg:#f6f7f9;--card:#ffffff;--border:#e5e7eb;--txt:#111827;--mut:#6b7280;
+--acc:#ff6b00;--acc-d:#e55e00;--acc-l:#fff1e6;--green:#16a34a;--blue:#2563eb}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.topbar .logo{font-size:20px;font-weight:800}
+.topbar .logo span{color:var(--acc)}
+.topbar a{color:var(--acc);font-weight:600;font-size:14px;text-decoration:none}
+.wrap{max-width:560px;margin:28px auto;padding:0 16px 60px}
+h1{font-size:24px;font-weight:700;margin-bottom:6px}
+p.sub{color:var(--mut);font-size:14px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.tabs{display:flex;gap:8px;margin-bottom:18px;background:#f1f2f4;border-radius:12px;padding:4px}
+.tabs button{flex:1;border:0;background:transparent;border-radius:9px;padding:11px;font-size:14px;font-weight:600;color:var(--mut);cursor:pointer}
+.tabs button.on{background:#fff;color:var(--txt);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+#preview{display:none;background:#000;border-radius:14px;overflow:hidden;margin-bottom:18px;position:relative}
+#preview video{width:100%;max-height:300px;display:block;background:#000}
+#preview img{width:100%;max-height:300px;object-fit:cover;display:block}
+#preview .x{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px}
+#drop{border:2px dashed #d1d5db;border-radius:14px;padding:34px 16px;text-align:center;cursor:pointer;transition:.2s;background:#fafbfc}
+#drop:hover,#drop.over{border-color:var(--acc);background:var(--acc-l)}
+#drop .big{font-size:34px;margin-bottom:8px}
+#drop p{color:var(--mut);font-size:13px}
+#drop p b{color:var(--acc)}
 #file{display:none}
 #ytbox{display:none}
-#ytbox input{width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:14px;font-size:15px}
-.fname{color:var(--green);font-size:14px;margin-top:10px;display:none}
-label.lbl{display:block;color:var(--mut);font-size:13px;font-weight:600;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.5px}
+#ytbox input,#ytbox textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:13px;font-size:14px;font-family:inherit}
+#ytbox textarea{resize:vertical}
+.fname{color:var(--green);font-size:13px;margin-top:10px;display:none;font-weight:600}
+label.lbl{display:block;color:var(--txt);font-size:14px;font-weight:600;margin:20px 0 8px}
+label.lbl small{color:var(--mut);font-weight:400}
+select,input[type=text]{width:100%;border:1px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;background:#fff;color:var(--txt)}
+select:focus,input[type=text]:focus{outline:2px solid var(--acc);border-color:var(--acc)}
 .seg{display:flex;gap:8px}
-.seg label{flex:1;text-align:center;background:#0d0d14;border:1px solid var(--border);border-radius:12px;padding:13px;cursor:pointer;margin:0;font-size:14px}
+.seg label{flex:1;text-align:center;border:1px solid var(--border);border-radius:12px;padding:11px;cursor:pointer;margin:0;font-size:13px;font-weight:500;background:#fff}
 .seg input{display:none}
-.seg input:checked+span{color:var(--acc2);font-weight:700}
-.seg label:has(input:checked){border-color:var(--acc);background:#1c1530}
-.styles{display:flex;gap:8px}
-.styles label{flex:1;text-align:center;background:#0d0d14;border:1px solid var(--border);border-radius:12px;padding:10px;cursor:pointer;margin:0}
-.styles input{display:none}
-.styles label:has(input:checked){border-color:var(--acc);background:#1c1530}
-.styles .sw{font-size:20px;font-weight:800;display:block}
-.styles small{color:var(--mut);font-size:11px}
-input[type=text]{width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:13px;font-size:15px}
-.row{display:flex;gap:12px}.row>div{flex:1}
-select{width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:13px;font-size:15px}
+.seg label:has(input:checked){border-color:var(--acc);background:var(--acc-l);color:var(--acc-d);font-weight:700}
+.themes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.themes label{border:2px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;margin:0;background:#fff;transition:.15s}
+.themes label:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.themes input{display:none}
+.themes label:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-l)}
+.themes .sw{height:64px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.5px}
+.themes .nm{text-align:center;font-size:12px;font-weight:600;padding:7px;border-top:1px solid var(--border);color:var(--txt)}
+.sw-h1{background:#000;color:#fff}.sw-h1 b{color:#ffd93d}
+.sw-h2{background:#111;color:#fff}.sw-h2 b{color:#ffd93d;font-style:italic}
+.sw-h3{background:#000;color:#ffd93d}.sw-h3 b{color:#fff}
+.sw-beast{background:#1a1a2e;color:#ffff00;-webkit-text-stroke:.6px #000;text-shadow:2px 2px 0 #000}
+.sw-leon{background:#000;color:#ff6b00;border:3px solid #000}.sw-leon b{background:#ff6b00;color:#000;padding:2px 6px;border-radius:4px}
+.sw-min{background:#f1f2f4;color:#374151;font-weight:400;font-size:12px}
+.trow{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #f1f2f4}
+.trow:last-child{border-bottom:0}
+.trow .t{font-size:14px;font-weight:600}
+.trow .d{font-size:12px;color:var(--mut);font-weight:400}
+.switch{position:relative;width:46px;height:26px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.sl{position:absolute;inset:0;background:#d1d5db;border-radius:20px;cursor:pointer;transition:.2s}
+.sl:before{position:absolute;content:"";height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked+.sl{background:var(--acc)}
+.switch input:checked+.sl:before{transform:translateX(20px)}
+.prov{display:flex;gap:8px;margin-bottom:10px}
+.prov label{flex:1;text-align:center;border:1px solid var(--border);border-radius:12px;padding:10px;cursor:pointer;font-size:13px;background:#fff;margin:0}
+.prov input{display:none}
+.prov label:has(input:checked){border-color:var(--acc);background:var(--acc-l);font-weight:700}
+.keyrow{display:flex;gap:10px}.keyrow>div{flex:1}
+.keyrow label{font-size:12px;color:var(--mut);font-weight:600;display:block;margin-bottom:5px}
 input[type=range]{width:100%;accent-color:var(--acc)}
-.rval{color:var(--acc2);font-weight:700}
-button.go{background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff;border:0;border-radius:14px;padding:17px;font-size:18px;font-weight:800;width:100%;margin-top:26px;cursor:pointer;transition:.2s}
-button.go:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,58,237,.4)}
-.feats{display:flex;gap:10px;justify-content:center;margin-top:22px;flex-wrap:wrap}
-.feats span{font-size:13px;color:var(--mut);background:#14141c;border:1px solid var(--border);border-radius:20px;padding:6px 14px}
+.rval{color:var(--acc);font-weight:800}
+button.go{background:linear-gradient(180deg,#ff7d1a,#f25c00);color:#fff;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:800;width:100%;margin-top:24px;cursor:pointer;box-shadow:0 4px 14px rgba(255,107,0,.35);transition:.2s}
+button.go:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(255,107,0,.45)}
+.feats{display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.feats span{font-size:12px;color:var(--mut);background:#fff;border:1px solid var(--border);border-radius:20px;padding:6px 13px}
 </style></head>
-<body><div class="wrap">
-<div class="logo">✂️ ClipAI</div>
-<div style="text-align:right;margin-bottom:6px"><a href="/jobs" style="color:var(--acc2);font-size:14px;text-decoration:none">📋 My Jobs →</a></div>
-<h1>Turn long videos into <span class="grad">viral shorts</span></h1>
-<p class="sub">AI finds the best moments, tracks faces, adds animated captions.</p>
+<body>
+<div class="topbar"><div class="logo">✂️ Clip<span>AI</span></div><a href="/jobs">📁 My Projects</a></div>
+<div class="wrap">
+<h1>Generate New Captions</h1>
+<p class="sub">Upload a long video — AI finds viral moments, tracks faces, adds animated captions.</p>
 <form action="/start" method="post" enctype="multipart/form-data" id="f">
 <div class="card">
+<div id="preview"><button type="button" class="x" onclick="clearPrev()">✕</button><div id="prevBody"></div></div>
 <div class="tabs">
-<button type="button" id="tUp" class="on" onclick="tab('up')">📤 Upload video</button>
+<button type="button" id="tUp" class="on" onclick="tab('up')">📤 From my computer</button>
 <button type="button" id="tYt" onclick="tab('yt')">🔗 YouTube link</button>
 </div>
 <div id="drop" onclick="document.getElementById('file').click()">
 <div class="big">🎬</div>
-<p><b>Drag & drop</b> your videos here or <b style="color:var(--acc2)">browse</b><br>MP4, MOV, WebM — up to 2GB each, <b>multiple files OK</b></p>
+<p><b>Drag & drop</b> your videos here or <b>browse</b><br>MP4, MOV, WebM — up to 2GB each, multiple files OK</p>
 <div class="fname" id="fname"></div>
 </div>
 <input type="file" id="file" name="video" accept="video/*" multiple onchange="picked(this)">
-<div id="ytbox"><textarea name="youtube_urls" rows="3" style="width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:14px;font-size:15px" placeholder="Paste YouTube URLs — one per line (bulk OK)&#10;https://youtube.com/watch?v=..."></textarea></div>
-
-<label class="lbl">AI Provider</label>
-<div class="seg">
-<label><input type="radio" name="provider" value="openai" checked><span>🧠 OpenAI <small style="color:var(--green)">recommended</small></span></label>
-<label><input type="radio" name="provider" value="groq"><span>⚡ Groq <small>FREE</small></span></label>
-</div>
-<div class="row">
-<div><label class="lbl">OpenAI key</label><input type="text" name="openai_key" placeholder="sk-... (or server default)"></div>
-<div><label class="lbl">Groq key</label><input type="text" name="groq_key" placeholder="gsk-... (if Groq)"></div>
+<div id="ytbox">
+<input type="text" id="ytone" name="youtube_url" placeholder="🔗 Paste a YouTube URL…" oninput="ytPrev(this.value)" style="margin-bottom:8px">
+<textarea name="youtube_urls" rows="2" placeholder="Or paste multiple URLs — one per line (bulk OK)"></textarea>
 </div>
 
-<label class="lbl">Caption style</label>
-<div class="styles">
-<label><input type="radio" name="caption_style" value="hormozi" checked><span class="sw" style="color:#ffd700">Aa</span><small>Hormozi</small></label>
-<label><input type="radio" name="caption_style" value="beast"><span class="sw" style="color:#ffff00;-webkit-text-stroke:1px #000">AA</span><small>Beast</small></label>
-<label><input type="radio" name="caption_style" value="minimal"><span class="sw" style="color:#fff;font-size:15px">aa</span><small>Minimal</small></label>
+<label class="lbl">Speech Language</label>
+<select name="speech_lang">
+<option value="en" selected>🇺🇸 English</option>
+<option value="es">🇪🇸 Spanish</option>
+<option value="fr">🇫🇷 French</option>
+<option value="de">🇩🇪 German</option>
+<option value="pt">🇵🇹 Portuguese</option>
+<option value="hi">🇮🇳 Hindi</option>
+<option value="ar">🇸🇦 Arabic</option>
+<option value="bn">🇧🇩 Bengali</option>
+<option value="ur">🇵🇰 Urdu</option>
+<option value="tr">🇹🇷 Turkish</option>
+<option value="it">🇮🇹 Italian</option>
+<option value="nl">🇳🇱 Dutch</option>
+<option value="ru">🇷🇺 Russian</option>
+<option value="ja">🇯🇵 Japanese</option>
+<option value="ko">🇰🇷 Korean</option>
+<option value="zh">🇨🇳 Chinese</option>
+</select>
+
+<label class="lbl">Clip duration</label>
+<select name="clip_duration">
+<option value="auto" selected>Auto</option>
+<option value="15-30">15 – 30 seconds</option>
+<option value="30-60">30 – 60 seconds</option>
+<option value="60-90">60 – 90 seconds</option>
+</select>
+
+<label class="lbl">Caption theme</label>
+<div class="themes">
+<label><input type="radio" name="caption_style" value="hormozi1" checked><div class="sw sw-h1">THIS IS <b>HORMOZI 1</b></div><div class="nm">Hormozi 1</div></label>
+<label><input type="radio" name="caption_style" value="hormozi2"><div class="sw sw-h2">THIS IS <b>HORMOZI 2</b></div><div class="nm">Hormozi 2</div></label>
+<label><input type="radio" name="caption_style" value="hormozi3"><div class="sw sw-h3">THIS IS <b>HORMOZI 3</b></div><div class="nm">Hormozi 3</div></label>
+<label><input type="radio" name="caption_style" value="beast"><div class="sw sw-beast">BEAST MODE</div><div class="nm">Beast</div></label>
+<label><input type="radio" name="caption_style" value="leon"><div class="sw sw-leon"><b>LEON</b> STYLE</div><div class="nm">Leon</div></label>
+<label><input type="radio" name="caption_style" value="minimal"><div class="sw sw-min">this is minimal style</div><div class="nm">Minimal</div></label>
 </div>
 
 <label class="lbl">Caption position</label>
@@ -87,35 +143,55 @@ button.go:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,58,237
 <label><input type="radio" name="caption_pos" value="bottom"><span>⬇️ Bottom</span></label>
 </div>
 
-<label class="lbl">Effects</label>
-<div class="seg">
-<label><input type="checkbox" name="auto_zoom" checked><span>🔍 Auto-zoom on emphasis</span></label>
+<label class="lbl">Video effects</label>
+<div class="trow"><div><div class="t">Face Tracking</div><div class="d">Keep the speaker centered in frame</div></div>
+<label class="switch"><input type="checkbox" name="face_track" checked><span class="sl"></span></label></div>
+<div class="trow"><div><div class="t">Auto-zoom</div><div class="d">Subtle push-in on emphasis words</div></div>
+<label class="switch"><input type="checkbox" name="auto_zoom" checked><span class="sl"></span></label></div>
+
+<label class="lbl">AI Provider</label>
+<div class="prov">
+<label><input type="radio" name="provider" value="openai" checked>🧠 OpenAI <small style="color:var(--green)">best</small></label>
+<label><input type="radio" name="provider" value="groq">⚡ Groq <small>FREE</small></label>
+</div>
+<div class="keyrow">
+<div><label>OpenAI key</label><input type="text" name="openai_key" placeholder="sk-... (or server default)"></div>
+<div><label>Groq key</label><input type="text" name="groq_key" placeholder="gsk-... (if Groq)"></div>
 </div>
 
 <label class="lbl">Number of clips: <span class="rval" id="nv">3</span></label>
 <input type="range" name="n_clips" min="1" max="10" value="3" oninput="document.getElementById('nv').textContent=this.value">
-<div class="row">
-<div><label class="lbl">Min length</label><select name="min_len"><option value="15">15s</option><option value="20" selected>20s</option><option value="30">30s</option></select></div>
-<div><label class="lbl">Max length</label><select name="max_len"><option value="30">30s</option><option value="50" selected>50s</option><option value="60">60s</option></select></div>
-</div>
-<button class="go" type="submit">🚀 Generate Viral Clips</button>
+
+<button class="go" type="submit">🚀 Generate Clips</button>
 </div>
 </form>
 <div class="feats"><span>🎯 Face tracking</span><span>💬 Auto captions</span><span>📊 Virality score</span><span>🔇 Silence removal</span><span>📝 SRT export</span></div>
 </div>
 <script>
-let mode='up';
+let mode='up', objUrl=null;
 function tab(m){mode=m;
 document.getElementById('tUp').classList.toggle('on',m=='up');
 document.getElementById('tYt').classList.toggle('on',m=='yt');
 document.getElementById('drop').style.display=m=='up'?'block':'none';
-document.getElementById('ytbox').style.display=m=='yt'?'block':'none';}
-function picked(i){const fs=i.files;const e=document.getElementById('fname');e.style.display=fs.length?'block':'none';e.textContent='✅ '+fs.length+' file(s): '+Array.from(fs).map(f=>f.name).join(', ').slice(0,120);}
+document.getElementById('ytbox').style.display=m=='yt'?'block':'none';
+if(m=='yt'){clearFile();}else{document.getElementById('ytone').value='';}}
+function showPrev(html){document.getElementById('preview').style.display='block';document.getElementById('prevBody').innerHTML=html;}
+function clearPrev(){document.getElementById('preview').style.display='none';document.getElementById('prevBody').innerHTML='';if(objUrl){URL.revokeObjectURL(objUrl);objUrl=null;}}
+function clearFile(){const i=document.getElementById('file');i.value='';document.getElementById('fname').style.display='none';clearPrev();}
+function picked(i){const fs=i.files;const e=document.getElementById('fname');
+if(!fs.length){e.style.display='none';clearPrev();return;}
+e.style.display='block';e.textContent='✅ '+fs.length+' file(s): '+Array.from(fs).map(f=>f.name).join(', ').slice(0,120);
+const f0=fs[0];if(objUrl)URL.revokeObjectURL(objUrl);objUrl=URL.createObjectURL(f0);
+showPrev('<video src="'+objUrl+'" controls playsinline preload="metadata"></video>');}
+function ytId(u){const m=String(u).match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);return m?m[1]:null;}
+function ytPrev(v){const id=ytId(v);if(id){showPrev('<img src="https://img.youtube.com/vi/'+id+'/hqdefault.jpg">');}else if(!v.trim()){clearPrev();}}
 const d=document.getElementById('drop');
 ['dragover','dragenter'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.add('over')}));
 ['dragleave','drop'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.remove('over')}));
 d.addEventListener('drop',ev=>{const f=ev.dataTransfer.files;if(f.length){document.getElementById('file').files=f;picked(document.getElementById('file'));}});
 document.getElementById('f').addEventListener('submit',ev=>{
-if(mode=='up'&&!document.getElementById('file').files.length){ev.preventDefault();alert('Please choose at least one video file');}
-if(mode=='yt'&&!document.querySelector('[name=youtube_urls]').value.trim()){ev.preventDefault();alert('Please paste at least one YouTube URL');}});
+const tg=ev.target.querySelector('button.go');tg.disabled=true;tg.textContent='⏳ Starting…';
+if(mode=='up'&&!document.getElementById('file').files.length){ev.preventDefault();tg.disabled=false;tg.textContent='🚀 Generate Clips';alert('Please choose at least one video file');}
+const ytVals=document.getElementById('ytone').value.trim()+document.querySelector('[name=youtube_urls]').value.trim();
+if(mode=='yt'&&!ytVals){ev.preventDefault();tg.disabled=false;tg.textContent='🚀 Generate Clips';alert('Please paste at least one YouTube URL');}});
 </script></body></html>
