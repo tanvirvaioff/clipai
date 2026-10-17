@@ -37,15 +37,19 @@ def video_size(path):
     except Exception:
         return 1920, 1080
 
-# ---------------- transcription (Groq Whisper, free) ----------------
-def transcribe(groq_key, video_path, job_dir):
+# ---------------- transcription (Groq Whisper free / OpenAI Whisper paid) ----------------
+def transcribe(provider, api_key, video_path, job_dir):
     log(job_dir, "Extracting audio…")
     audio = os.path.join(job_dir, "audio.mp3")
     rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-vn",
                           "-c:a", "libmp3lame", "-b:a", "128k", audio])
     if rc != 0 or not os.path.exists(audio):
         return False, "audio extract failed: %s" % err[:200]
-    log(job_dir, "Transcribing with Whisper…")
+    log(job_dir, "Transcribing with Whisper (%s)…" % provider)
+    if provider == "openai":
+        base, model = OPENAI_BASE, "whisper-1"
+    else:
+        base, model = GROQ_BASE, "whisper-large-v3-turbo"
     # chunk audio into 10-min pieces for the API
     dur = media_duration(audio)
     words = []
@@ -56,10 +60,10 @@ def transcribe(groq_key, video_path, job_dir):
                             "-i", audio, "-c", "copy", chunk])
         with open(chunk, "rb") as f:
             r = requests.post(
-                GROQ_BASE + "/audio/transcriptions",
-                headers={"Authorization": "Bearer " + groq_key},
+                base + "/audio/transcriptions",
+                headers={"Authorization": "Bearer " + api_key},
                 files={"file": ("audio.mp3", f, "audio/mpeg")},
-                data={"model": "whisper-large-v3-turbo",
+                data={"model": model,
                       "response_format": "verbose_json",
                       "timestamp_granularities[]": "word"},
                 timeout=600)
@@ -190,7 +194,7 @@ def snap_time(words, t, which):
 _YUNET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "yunet.onnx")
 _FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
-def face_track_x(video_path, start, end, vw, job_dir):
+def face_track_x(video_path, start, end, vw, job_dir, step=1.0):
     """Return smoothed face-center x positions: list of (time, x)."""
     detector = cv2.FaceDetectorYN_create(_YUNET, "", (320, 320))
     cap = cv2.VideoCapture(video_path)
@@ -201,7 +205,7 @@ def face_track_x(video_path, start, end, vw, job_dir):
         cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
         ok, frame = cap.read()
         if not ok:
-            t += 1.0
+            t += step
             continue
         h, w = frame.shape[:2]
         detector.setInputSize((w, h))
@@ -211,7 +215,7 @@ def face_track_x(video_path, start, end, vw, job_dir):
             f = max(faces, key=lambda b: b[2] * b[3])
             last_x = float(f[0] + f[2] / 2) / w * vw
         pts.append((t - start, last_x))
-        t += 1.0
+        t += step
     cap.release()
     # smooth with moving average
     sm = []
@@ -225,16 +229,18 @@ def _ass_safe(t):
     """Escape ASS special chars in transcribed words."""
     return t.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
 
-def write_ass(job_dir, words, start, end, path, max_chars=30):
-    """Hormozi-style captions: 3-4 words/line, active word gold, rest white."""
+def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30):
+    """Caption styles: hormozi (gold karaoke), beast (big yellow caps), minimal (small white)."""
     segs = [w for w in words if w["e"] > start and w["s"] < end]
     lines, cur = [], []
+    per_line = 4 if style == "hormozi" else (3 if style == "beast" else 6)
+    chars = max_chars if style == "hormozi" else (24 if style == "beast" else 42)
     for i, w in enumerate(segs):
         cur.append(w)
         txt = " ".join(c["w"] for c in cur)
         nxt = segs[i + 1] if i + 1 < len(segs) else None
         pause = (nxt["s"] - w["e"]) > 0.5 if nxt else True
-        if len(txt) >= max_chars or pause or len(cur) >= 4:
+        if len(txt) >= chars or pause or len(cur) >= per_line:
             lines.append(cur)
             cur = []
     if cur:
@@ -242,30 +248,96 @@ def write_ass(job_dir, words, start, end, path, max_chars=30):
     def ts(t):
         t = max(0, t - start)
         return "%d:%02d:%05.2f" % (int(t // 3600), int(t % 3600 // 60), t % 60)
-    GOLD = r"{\c&H00D7FF&}"
-    WHITE = r"{\c&H00FFFFFF&}"
-    style = ("Style: Cap,DejaVu Sans,72,&H00FFFFFF,&H000000FF,&H90000000,&H00000000,"
-             "-1,0,0,0,100,100,0,0,1,4,0.5,2,10,10,140,1")
+    if style == "beast":
+        # big yellow all-caps, thick black outline
+        st = ("Style: Cap,DejaVu Sans,88,&H0000FFFF,&H000000FF,&H00000000,&H00000000,"
+              "-1,0,0,0,100,100,0,0,1,6,0,2,10,10,120,1")
+        body = lambda ln: _ass_safe(" ".join(c["w"] for c in ln).upper())
+        hl = False
+    elif style == "minimal":
+        # small white bottom, no highlight
+        st = ("Style: Cap,DejaVu Sans,48,&H00FFFFFF,&H000000FF,&H90000000,&H00000000,"
+              "-1,0,0,0,100,100,0,0,1,3,0,2,10,10,60,1")
+        body = lambda ln: _ass_safe(" ".join(c["w"] for c in ln))
+        hl = False
+    else:
+        # hormozi: karaoke gold highlight
+        st = ("Style: Cap,DejaVu Sans,72,&H00FFFFFF,&H000000FF,&H90000000,&H00000000,"
+              "-1,0,0,0,100,100,0,0,1,4,0.5,2,10,10,140,1")
+        hl = True
     out = ["[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920",
            "WrapStyle: 2", "", "[V4+ Styles]",
            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-           style, "", "[Events]",
+           st, "", "[Events]",
            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
+    GOLD = r"{\c&H00D7FF&}"
+    WHITE = r"{\c&H00FFFFFF&}"
     for ln in lines:
         if not ln:
             continue
-        for wi, w in enumerate(ln):
-            wend = ln[wi + 1]["s"] if wi + 1 < len(ln) else w["e"] + 0.25
-            parts = []
-            for ci, c in enumerate(ln):
-                col = GOLD if ci == wi else WHITE
-                parts.append("%s%s" % (col, _ass_safe(c["w"])))
-            out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s" %
-                       (ts(w["s"]), ts(min(wend, ln[-1]["e"] + 0.3)), " ".join(parts)))
+        if hl:
+            for wi, w in enumerate(ln):
+                wend = ln[wi + 1]["s"] if wi + 1 < len(ln) else w["e"] + 0.25
+                parts = []
+                for ci, c in enumerate(ln):
+                    col = GOLD if ci == wi else WHITE
+                    parts.append("%s%s" % (col, _ass_safe(c["w"])))
+                out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s" %
+                           (ts(w["s"]), ts(min(wend, ln[-1]["e"] + 0.3)), " ".join(parts)))
+        else:
+            s_t, e_t = ts(ln[0]["s"]), ts(ln[-1]["e"] + 0.25)
+            out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s" % (s_t, e_t, body(ln)))
     open(path, "w", encoding="utf-8").write("\n".join(out))
 
+def write_srt(words, start, end, path):
+    """SRT subtitles for a clip time range."""
+    segs = [w for w in words if w["e"] > start and w["s"] < end]
+    lines, cur = [], []
+    for i, w in enumerate(segs):
+        cur.append(w)
+        txt = " ".join(c["w"] for c in cur)
+        nxt = segs[i + 1] if i + 1 < len(segs) else None
+        pause = (nxt["s"] - w["e"]) > 0.5 if nxt else True
+        if len(txt) >= 42 or pause or len(cur) >= 6:
+            lines.append(cur)
+            cur = []
+    if cur:
+        lines.append(cur)
+    def ts(t):
+        t = max(0, t - start)
+        ms = int(round((t - int(t)) * 1000))
+        return "%02d:%02d:%02d,%03d" % (int(t // 3600), int(t % 3600 // 60), int(t % 60), ms)
+    out = []
+    for n, ln in enumerate(lines, 1):
+        if not ln:
+            continue
+        out.append(str(n))
+        out.append("%s --> %s" % (ts(ln[0]["s"]), ts(ln[-1]["e"])))
+        out.append(" ".join(c["w"] for c in ln))
+        out.append("")
+    open(path, "w", encoding="utf-8").write("\n".join(out))
+    return len(lines)
+
 # ---------------- render one clip ----------------
-def render_clip(video_path, words, moment, idx, job_dir, out_dir):
+def detect_silences(video_path, start, end, job_dir, thresh_db=-40, min_dur=0.8):
+    """Find silences > min_dur in [start,end]. Returns list of (s,e) relative to start."""
+    rc, _, err = run_cmd([
+        "ffmpeg", "-v", "info", "-ss", str(start), "-t", str(end - start),
+        "-i", video_path, "-af",
+        "silencedetect=noise=%sdB:d=%s" % (thresh_db, min_dur),
+        "-f", "null", "-"], timeout=300)
+    sils = []
+    for m in re.finditer(r"silence_start: ([\d.]+)", err):
+        ss = float(m.group(1))
+        me = re.search(r"silence_end: ([\d.]+)", err[m.end():])
+        if me:
+            sils.append((ss, float(me.group(1))))
+    if sils:
+        log(job_dir, "silences in clip: %s" %
+            ", ".join("%.1f-%.1fs" % p for p in sils))
+    return sils
+
+def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi"):
     s, e = moment["start"], moment["end"]
     dur = e - s
     if dur <= 0:
@@ -281,72 +353,74 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir):
     if cw >= vw or cw <= 0:
         is_portrait = True
         cw = vw
-    log(job_dir, "Clip %d: %.0fs-%.0fs (%s) size=%dx%d portrait=%s" %
-        (idx + 1, s, e, moment["title"], vw, vh, is_portrait))
-    # face track (only needed for landscape crop)
-    track = [] if is_portrait else face_track_x(video_path, s, e, vw, job_dir)
-    # build crop expression from track (step every 0.5s)
-    # use crop with animated x via sendcmd is complex; instead re-encode with
-    # per-segment crops: split moment into 3s chunks, crop each, concat
-    chunk = 3.0
-    parts = []
-    t = 0.0
-    ci = 0
-    while t < dur:
-        te = min(t + chunk, dur)
-        # face x at midpoint
-        mid = t + (te - t) / 2
-        fx = vw / 2
-        for tt, x in track:
-            if tt <= mid:
-                fx = x
-        cx = int(max(0, min(vw - cw, fx - cw / 2)))
-        # crop dims must be positive and inside frame
-        cx = max(0, min(cx, vw - cw))
-        part = os.path.join(job_dir, "clip%d_p%d.mp4" % (idx, ci))
-        ass = os.path.join(job_dir, "clip%d_p%d.ass" % (idx, ci))
-        write_ass(job_dir, words, s + t, s + te, ass)
-        ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
-        sub = "subtitles='%s':fontsdir='%s'" % (ass_esc, _FONTS)
-        if is_portrait:
-            vf = "scale=1080:1920,%s" % sub
-        else:
-            vf = "crop=%d:%d:%d:0,scale=1080:1920,%s" % (cw, vh, cx, sub)
-        rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s + t), "-t", str(te - t),
+    # silence check: trim leading/trailing silence (timestamps relative to clip start)
+    sils = detect_silences(video_path, s, e, job_dir)
+    trim_s, trim_e = 0.0, 0.0
+    for ss, se in sils:
+        if ss < 0.5 and se - ss >= 0.8:
+            trim_s = max(trim_s, se)
+        if se >= dur - 0.5 and se - ss >= 0.8:
+            trim_e = max(trim_e, dur - ss)
+    if trim_s > 0:
+        s += trim_s
+        log(job_dir, "trimmed %.1fs leading silence" % trim_s)
+    if trim_e > 0:
+        e -= trim_e
+        log(job_dir, "trimmed %.1fs trailing silence" % trim_e)
+    dur = e - s
+    if dur < 5:
+        log(job_dir, "Clip %d: too short after silence trim (%.1fs)" % (idx + 1, dur))
+        return False, "too short after trim"
+    log(job_dir, "Clip %d: %.0fs-%.0fs (%s) size=%dx%d portrait=%s style=%s" %
+        (idx + 1, s, e, moment["title"], vw, vh, is_portrait, style))
+    base = "clip%d_%s" % (idx + 1, re.sub(r"\W+", "_", moment["title"])[:30])
+    out = os.path.join(out_dir, base + ".mp4")
+    # single ASS + SRT for the whole clip
+    ass = os.path.join(job_dir, "clip%d.ass" % idx)
+    write_ass(job_dir, words, s, e, ass, style=style)
+    srt_path = os.path.join(out_dir, base + ".srt")
+    write_srt(words, s, e, srt_path)
+    ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
+    sub = "subtitles='%s':fontsdir='%s'" % (ass_esc, _FONTS)
+    if is_portrait:
+        vf = "scale=1080:1920,%s" % sub
+        rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
                               "-i", video_path, "-vf", vf,
                               "-c:v", "libx264", "-preset", "fast", "-crf", "19",
-                              "-c:a", "aac", "-b:a", "160k", part])
-        if (rc != 0 or not os.path.exists(part)) and os.path.exists(ass):
-            # fallback: render without subtitles (libass/font issue)
-            log(job_dir, "chunk %d subtitles failed, retry plain" % ci)
-            vf_plain = "scale=1080:1920" if is_portrait else "crop=%d:%d:%d:0,scale=1080:1920" % (cw, vh, cx)
-            rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s + t), "-t", str(te - t),
+                              "-c:a", "aac", "-b:a", "160k", out])
+    else:
+        # smooth face-tracked crop in ONE pass via sendcmd (0.5s samples)
+        track = face_track_x(video_path, s, e, vw, job_dir, step=0.5)
+        cmds = os.path.join(job_dir, "clip%d.cmds" % idx)
+        with open(cmds, "w") as f:
+            for tt, x in track:
+                cx = int(max(0, min(vw - cw, x - cw / 2)))
+                f.write("%.1f crop x %d;\n" % (tt, cx))
+        init_cx = int(max(0, min(vw - cw, (track[0][1] if track else vw / 2) - cw / 2)))
+        vf = ("sendcmd=f='%s',crop=%d:%d:x=%d:y=0,scale=1080:1920,%s" %
+              (cmds.replace("'", r"'\''"), cw, vh, init_cx, sub))
+        rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
+                              "-i", video_path, "-vf", vf,
+                              "-c:v", "libx264", "-preset", "fast", "-crf", "19",
+                              "-c:a", "aac", "-b:a", "160k", out])
+        try:
+            os.remove(cmds)
+        except Exception:
+            pass
+        if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
+            log(job_dir, "clip %d subtitles failed, retry plain" % (idx + 1))
+            vf_plain = "crop=%d:%d:%d:0,scale=1080:1920" % (cw, vh, init_cx)
+            rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
                                   "-i", video_path, "-vf", vf_plain,
                                   "-c:v", "libx264", "-preset", "fast", "-crf", "19",
-                                  "-c:a", "aac", "-b:a", "160k", part])
-        if rc != 0 or not os.path.exists(part):
-            log(job_dir, "chunk render failed: %s" % err[-1500:])
-            return False, "render failed"
-        parts.append(part)
-        try:
-            os.remove(ass)
-        except Exception:
-            pass
-        t = te
-        ci += 1
-    # concat
-    lst = os.path.join(job_dir, "clip%d.txt" % idx)
-    open(lst, "w").write("".join("file '%s'\n" % p for p in parts))
-    out = os.path.join(out_dir, "clip%d_%s.mp4" % (idx + 1, re.sub(r"\W+", "_", moment["title"])[:30]))
-    rc, _, err = run_cmd(["ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                          "-i", lst, "-c", "copy", out])
-    for p in parts:
-        try:
-            os.remove(p)
-        except Exception:
-            pass
+                                  "-c:a", "aac", "-b:a", "160k", out])
     if rc != 0 or not os.path.exists(out):
-        return False, "concat failed: %s" % err[:200]
+        log(job_dir, "clip render failed: %s" % err[-1500:])
+        return False, "render failed"
+    try:
+        os.remove(ass)
+    except Exception:
+        pass
     return True, out
 
 # ---------------- full job ----------------
@@ -355,13 +429,14 @@ def run_job(job_dir, video_path, cfg):
     out_dir = os.path.join(job_dir, "clips")
     os.makedirs(out_dir, exist_ok=True)
     open(os.path.join(job_dir, "log.txt"), "w").write("")
-    provider = cfg.get("provider", "groq")
+    provider = cfg.get("provider", "openai")
     groq_key = cfg.get("groq_key", "")
     openai_key = cfg.get("openai_key", "")
     llm_key = openai_key if provider == "openai" else groq_key
+    stt_key = openai_key if provider == "openai" else groq_key
     if not llm_key:
         return False, "API key missing"
-    ok, words = transcribe(groq_key, video_path, job_dir)
+    ok, words = transcribe(provider, stt_key, video_path, job_dir)
     if not ok:
         return False, words
     ok, moments = find_moments(provider, llm_key, words, cfg.get("n_clips", 3),
@@ -374,11 +449,14 @@ def run_job(job_dir, video_path, cfg):
     open(os.path.join(job_dir, "moments.json"), "w", encoding="utf-8").write(
         json.dumps(moments, ensure_ascii=False, indent=1))
     done = []
+    style = cfg.get("caption_style", "hormozi")
     for i, mo in enumerate(moments):
-        ok, out = render_clip(video_path, words, mo, i, job_dir, out_dir)
+        ok, out = render_clip(video_path, words, mo, i, job_dir, out_dir, style=style)
         if ok:
+            base = os.path.splitext(os.path.basename(out))[0]
             done.append({"file": os.path.basename(out), "title": mo["title"],
-                         "score": mo["score"], "start": mo["start"], "end": mo["end"]})
+                         "score": mo["score"], "start": mo["start"], "end": mo["end"],
+                         "srt": base + ".srt"})
         else:
             log(job_dir, "clip %d failed: %s" % (i + 1, out))
     open(os.path.join(job_dir, "done.json"), "w", encoding="utf-8").write(
