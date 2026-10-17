@@ -1,0 +1,235 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipAI — Clip Settings</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0f;--card:#14141c;--card2:#1c1c26;--border:#262633;--txt:#f1f1f4;--mut:#9a9ab0;--acc:#7c3aed;--green:#22c55e}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh;display:flex}
+.side{width:64px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;position:sticky;top:0;height:100vh}
+.side a{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--mut);font-size:19px;text-decoration:none}
+.side a:hover{background:var(--card2);color:var(--txt)}
+.side .sp{flex:1}
+.main{flex:1;min-width:0;padding:30px 24px 90px;max-width:640px;margin:0 auto;width:100%}
+.vthumb{position:relative;width:210px;margin:6px auto 18px;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border)}
+.vthumb img,.vthumb video{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
+.vthumb .res{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px}
+.vthumb .rm{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.65);border:0;color:#fff;font-size:11px;border-radius:8px;padding:3px 9px;cursor:pointer}
+.bigbtn{display:block;width:100%;max-width:420px;margin:0 auto;background:#fff;color:#111;border:0;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;transition:.15s}
+.bigbtn:hover{transform:scale(1.02)}
+.bigbtn:disabled{opacity:.6;cursor:wait}
+.metarow{display:flex;justify-content:center;align-items:center;gap:18px;margin:16px 0 22px;font-size:13px;color:var(--mut);flex-wrap:wrap}
+.metarow select{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:7px 10px;font-size:13px}
+.metarow .cu{color:var(--txt);font-weight:700}
+.metarow .cu b{color:#f59e0b}
+.tabs{display:flex;gap:26px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.tabs button{background:none;border:0;color:var(--mut);font-size:14px;font-weight:700;padding:10px 2px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--txt);border-bottom-color:var(--txt)}
+.optgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.optgrid label{font-size:11px;color:var(--mut);font-weight:600;display:block;margin-bottom:5px}
+.optgrid select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:10px;font-size:13px}
+.togs{display:flex;gap:26px;margin:4px 0 18px}
+.tog{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+.switch{position:relative;width:42px;height:24px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.sl{position:absolute;inset:0;background:#3a3a4a;border-radius:20px;cursor:pointer;transition:.2s}
+.sl:before{position:absolute;content:"";height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+.sl{background:var(--acc)}
+.switch input:checked+.sl:before{transform:translateX(18px)}
+.plabel{font-size:13px;color:var(--mut);margin-bottom:8px;display:flex;justify-content:space-between}
+.plabel a{color:var(--mut);font-size:12px}
+.ptxt{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:13px;font-size:13px;margin-bottom:20px}
+.ptxt::placeholder{color:#5a5a6e}
+.tfhead{font-size:13px;color:var(--mut);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.csaver{font-size:10px;background:#14532d;color:#86efac;border-radius:8px;padding:3px 9px;font-weight:700}
+.tfwrap{position:relative;height:44px;margin-bottom:6px}
+.tfwrap input[type=range]{position:absolute;width:100%;top:8px;-webkit-appearance:none;background:transparent;pointer-events:none;margin:0}
+.tfwrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--acc);cursor:pointer}
+.tfwrap input[type=range]::-moz-range-thumb{pointer-events:auto;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--acc);cursor:pointer}
+.tftrack{position:absolute;top:16px;left:0;right:0;height:5px;background:#2a2a38;border-radius:4px}
+.tffill{position:absolute;top:16px;height:5px;background:var(--acc);border-radius:4px}
+.tflabels{display:flex;justify-content:space-between;margin-bottom:22px}
+.tflabels span{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:12px;font-weight:600}
+.ptabs{display:flex;gap:26px;margin-bottom:14px}
+.ptabs button{background:none;border:0;color:var(--mut);font-size:13px;font-weight:700;padding:8px 2px;cursor:pointer}
+.ptabs button.on{color:var(--txt);border-bottom:2px solid var(--txt)}
+.capgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:8px}
+.capgrid label{cursor:pointer;margin:0}
+.capgrid input{display:none}
+.pres{background:var(--card2);border:2px solid var(--border);border-radius:12px;height:64px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;text-align:center;padding:4px;line-height:1.25;transition:.15s;overflow:hidden}
+.capgrid label:has(input:checked) .pres{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.capnm{text-align:center;font-size:10px;color:var(--mut);margin-top:4px;font-weight:600}
+.p-none{background:#2a2a35;color:var(--mut);font-size:20px}
+.p-karaoke{background:#1a1a24;color:#fff}
+.p-deepdiver{background:#3a3a48;color:#e5e5ee;font-weight:600;font-size:11px}
+.p-youshaei{background:#1a1a24;color:#5eead4}
+.p-podp{background:#1a1a24;color:#f472b6}
+.p-mozi{background:#101014;color:#fff}.p-mozi b{color:#4ade80}
+.p-beasty{background:#1a1a24;color:#fff;font-style:italic}
+.p-simple{background:#1a1a24;color:#fff;letter-spacing:1px}
+.p-popline{background:#101014;color:#ff6b00}
+.p-thinkmedia{background:#1a1a24;color:#facc15}
+.arow{display:flex;align-items:center;gap:10px;margin:20px 0;font-size:13px;color:var(--mut)}
+.arow select{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:8px 12px;font-size:13px}
+.savedef{display:block;margin:0 auto;background:var(--card2);border:1px solid var(--border);color:var(--mut);border-radius:12px;padding:11px 26px;font-size:13px;font-weight:600;cursor:pointer}
+.savedef:hover{color:var(--txt);border-color:var(--acc)}
+.seg{display:flex;gap:8px;margin-bottom:18px}
+.seg label{flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--mut);background:var(--card2);margin:0}
+.seg input{display:none}
+.seg label:has(input:checked){border-color:var(--acc);color:var(--txt);font-weight:700}
+.seglbl{font-size:12px;color:var(--mut);font-weight:600;margin-bottom:6px}
+.adv{margin-top:22px;border-top:1px solid var(--border);padding-top:18px}
+.adv summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--mut)}
+.adv .in{margin-top:12px}
+.adv select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:10px;font-size:13px;margin-bottom:10px}
+.adv input[type=text]{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:10px;font-size:13px;margin-bottom:10px}
+.adv input[type=range]{width:100%;accent-color:var(--acc)}
+@media(max-width:640px){.side{display:none}.capgrid{grid-template-columns:repeat(3,1fr)}.optgrid{grid-template-columns:1fr}}
+</style></head>
+<body>
+<nav class="side">
+<a href="/" title="Home">⌂</a><a href="/jobs" title="My projects">▦</a><a href="/jobs" title="Calendar">▤</a><a href="/jobs" title="Analytics">◔</a><div class="sp"></div><a href="/jobs" title="Help">?</a>
+</nav>
+<div class="main">
+<form action="/start" method="post" id="f">
+<input type="hidden" name="wf_token" value="{{ src.token or '' }}">
+<input type="hidden" name="youtube_url" value="{{ src.url or '' }}">
+<input type="hidden" name="source_kind" value="{{ src.kind }}">
+<input type="hidden" name="source_name" value="{{ src.title or 'video' }}">
+<input type="hidden" name="provider" value="groq">
+<input type="hidden" name="caption_style" id="capstyle" value="hormozi1">
+
+<div class="vthumb">
+{% if src.kind == 'youtube' %}
+<img src="{{ src.thumb }}" alt="video">
+{% else %}
+<video src="{{ src.preview_url }}" muted playsinline></video>
+{% endif %}
+{% if src.res %}<span class="res">{{ src.res }}</span>{% endif %}
+<button type="button" class="rm" onclick="location.href='/'">Remove</button>
+</div>
+
+<button class="bigbtn" type="submit" id="go">Get clips in 1 click</button>
+
+<div class="metarow">
+<span>Speech language:
+<select name="speech_lang">
+<option value="en" selected>English</option><option value="es">Spanish</option>
+<option value="fr">French</option><option value="de">German</option>
+<option value="pt">Portuguese</option><option value="hi">Hindi</option>
+<option value="ar">Arabic</option><option value="bn">Bengali</option>
+<option value="ur">Urdu</option><option value="tr">Turkish</option>
+<option value="it">Italian</option><option value="nl">Dutch</option>
+<option value="ru">Russian</option><option value="ja">Japanese</option>
+<option value="ko">Korean</option><option value="zh">Chinese</option>
+</select></span>
+<span>📄 Upload SRT <small>(optional)</small></span>
+<span class="cu">Credit usage: <b>⚡15</b></span>
+</div>
+
+<div class="tabs">
+<button type="button" class="on" id="tAi" onclick="mode('ai')">AI clipping</button>
+<button type="button" id="tMan" onclick="mode('manual')">Don't clip</button>
+</div>
+<input type="hidden" name="clip_mode" id="clipmode" value="ai">
+
+<div id="aiOpts">
+<div class="optgrid">
+<div><label>Clip model</label><select name="clip_model"><option value="clipbasic" selected>ClipBasic</option><option value="clipanything">ClipAnything</option></select></div>
+<div><label>Genre</label><select name="genre"><option selected>Auto</option><option>Podcast</option><option>Vlog</option><option>Gaming</option><option>Sports</option><option>Interview</option><option>Education</option><option>Comedy</option><option>Business</option></select></div>
+<div><label>Clip length</label><select name="clip_length"><option value="auto0-3m" selected>Auto (0m-3m)</option><option value="0-30s">Short (0-30s)</option><option value="30-60s">Medium (30-60s)</option><option value="60-180s">Long (60s-3m)</option></select></div>
+</div>
+</div>
+
+<div class="togs">
+<label class="tog">Auto headline <span class="switch"><input type="checkbox" name="auto_headline" checked><span class="sl"></span></span></label>
+<label class="tog">Auto zoom <span class="switch"><input type="checkbox" name="auto_zoom" checked><span class="sl"></span></span></label>
+<label class="tog">Face tracking <span class="switch"><input type="checkbox" name="face_track" checked><span class="sl"></span></span></label>
+</div>
+
+<div class="plabel"><span>Include specific moments</span><a href="#" onclick="return false">Not sure how to prompt? learn more</a></div>
+<input class="ptxt" type="text" name="moment_prompt" placeholder="Example: find moments when we talked about the playoffs">
+
+{% if src.duration and src.duration > 0 %}
+<div class="tfhead">Processing timeframe <span class="csaver">Credit saver</span></div>
+<div class="tfwrap">
+<div class="tftrack"></div><div class="tffill" id="tffill"></div>
+<input type="range" id="tfs" min="0" max="{{ src.duration|int }}" value="0" step="1">
+<input type="range" id="tfe" min="0" max="{{ src.duration|int }}" value="{{ src.duration|int }}" step="1">
+</div>
+<div class="tflabels"><span id="tfsL">0:00:00</span><span id="tfeL">0:00:00</span></div>
+<input type="hidden" name="tf_start" id="tfsV" value="">
+<input type="hidden" name="tf_end" id="tfeV" value="">
+{% endif %}
+
+<div class="ptabs"><button type="button" class="on">Quick presets</button><button type="button" onclick="alert('Custom templates coming soon')">My templates</button></div>
+<div style="font-size:13px;font-weight:700;margin-bottom:10px">Caption</div>
+<div class="capgrid" id="caps">
+<label><input type="radio" name="cap" value="none"><div><div class="pres p-none">🚫</div><div class="capnm">No caption</div></div></label>
+<label><input type="radio" name="cap" value="karaoke" checked><div><div class="pres p-karaoke">TO GET<br>STARTED</div><div class="capnm">Karaoke</div></div></label>
+<label><input type="radio" name="cap" value="deepdiver"><div><div class="pres p-deepdiver">To get started</div><div class="capnm">Deep Diver</div></div></label>
+<label><input type="radio" name="cap" value="youshaei"><div><div class="pres p-youshaei">TO GET STARTED</div><div class="capnm">Youshaei</div></div></label>
+<label><input type="radio" name="cap" value="podp"><div><div class="pres p-podp">TO GET</div><div class="capnm">Pod P</div></div></label>
+<label><input type="radio" name="cap" value="mozi"><div><div class="pres p-mozi">CLIPPING<br><b>WITH AI</b></div><div class="capnm">Mozi</div></div></label>
+<label><input type="radio" name="cap" value="beasty"><div><div class="pres p-beasty">TO GET</div><div class="capnm">Beasty</div></div></label>
+<label><input type="radio" name="cap" value="simple"><div><div class="pres p-simple">TO GET</div><div class="capnm">Simple</div></div></label>
+<label><input type="radio" name="cap" value="popline"><div><div class="pres p-popline">TO GET<br>STARTED</div><div class="capnm">Popline</div></div></label>
+<label><input type="radio" name="cap" value="thinkmedia"><div><div class="pres p-thinkmedia">TO GET<br>STARTED</div><div class="capnm">Think Media</div></div></label>
+</div>
+
+<div class="seglbl">Caption position</div>
+<div class="seg">
+<label><input type="radio" name="caption_pos" value="top"><span>⬆️ Top</span></label>
+<label><input type="radio" name="caption_pos" value="middle" checked><span>⏺️ Middle</span></label>
+<label><input type="radio" name="caption_pos" value="bottom"><span>⬇️ Bottom</span></label>
+</div>
+
+<div class="arow">Choose aspect ratio
+<select name="aspect"><option value="9:16" selected>📱 9:16</option><option value="1:1" disabled>⬛ 1:1 (soon)</option><option value="16:9" disabled>🖥️ 16:9 (soon)</option></select>
+</div>
+
+<div class="seglbl">Number of clips: <b id="nv" style="color:#fff">3</b></div>
+<input type="range" name="n_clips" min="1" max="10" value="3" style="width:100%;accent-color:#7c3aed;margin-bottom:8px" oninput="document.getElementById('nv').textContent=this.value">
+
+<button type="button" class="savedef" onclick="saveDef()">Save settings above as default</button>
+
+<details class="adv"><summary>⚙️ Advanced (AI provider & keys)</summary><div class="in">
+<select name="provider_x" id="provx" onchange="document.querySelector('[name=provider]').value=this.value">
+<option value="groq" selected>⚡ Groq (FREE)</option><option value="openai">🧠 OpenAI (best)</option>
+</select>
+<input type="text" name="groq_key" placeholder="gsk-... (Groq key, or server default)">
+<input type="text" name="openai_key" placeholder="sk-... (OpenAI key)">
+</div></details>
+</form>
+</div>
+<script>
+const MAP={none:'none',karaoke:'hormozi1',mozi:'hormozi2',deepdiver:'hormozi3',youshaei:'hormozi2',podp:'minimal',beasty:'beast',simple:'minimal',popline:'leon',thinkmedia:'beast'};
+document.querySelectorAll('#caps input').forEach(r=>r.addEventListener('change',()=>{
+document.getElementById('capstyle').value=MAP[r.value]||'hormozi1';}));
+function mode(m){document.getElementById('clipmode').value=m;
+document.getElementById('tAi').classList.toggle('on',m=='ai');
+document.getElementById('tMan').classList.toggle('on',m=='manual');
+document.getElementById('aiOpts').style.display=m=='ai'?'block':'none';}
+// timeframe dual slider
+const DUR={{ (src.duration or 0)|int }};
+function fmt(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+return h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0');}
+const tfs=document.getElementById('tfs'),tfe=document.getElementById('tfe');
+if(tfs&&tfe){function upd(){let a=+tfs.value,b=+tfe.value;if(a>b-5){if(document.activeElement==tfs)a=b-5;else b=a+5;tfs.value=a;tfe.value=b;}
+const full=+tfs.max||1;
+document.getElementById('tffill').style.left=(a/full*100)+'%';
+document.getElementById('tffill').style.width=((b-a)/full*100)+'%';
+document.getElementById('tfsL').textContent=fmt(a);document.getElementById('tfeL').textContent=fmt(b);
+document.getElementById('tfsV').value=(a<=0?'':a);document.getElementById('tfeV').value=(b>=full?'':b);}
+tfs.addEventListener('input',upd);tfe.addEventListener('input',upd);upd();}
+// save/restore defaults
+function saveDef(){const d={};new FormData(document.getElementById('f')).forEach((v,k)=>{if(k!=='wf_token'&&k!=='youtube_url')d[k]=v;});
+localStorage.setItem('clipai_def',JSON.stringify(d));alert('Settings saved as default ✓');}
+(function(){try{const d=JSON.parse(localStorage.getItem('clipai_def')||'null');if(!d)return;
+const f=document.getElementById('f');
+for(const k in d){const el=f.elements[k];if(!el)continue;
+if(el.type=='checkbox')el.checked=d[k]=='on';else if(el.type=='radio'){const r=f.querySelector(`input[name=${k}][value="${d[k]}"]`);if(r)r.checked=true;}
+else el.value=d[k];}
+const cap=f.querySelector('input[name=cap]:checked');if(cap)document.getElementById('capstyle').value=MAP[cap.value]||'hormozi1';
+}catch(e){}})();
+document.getElementById('f').addEventListener('submit',()=>{const b=document.getElementById('go');b.disabled=true;b.textContent='⏳ Starting…';});
+</script></body></html>
