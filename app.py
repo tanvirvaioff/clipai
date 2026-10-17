@@ -54,9 +54,13 @@ def download_youtube(url, jd):
 
 def job_worker(jid, video_path, cfg):
     jd = os.path.join(JOBS, jid)
-    _write_status(jid, {"status": "running", "progress": "starting…"})
+    _write_status(jid, {"status": "running", "progress": 0,
+                        "step": "Starting", "detail": "Preparing…"})
+    def _prog(pct, step, detail=""):
+        _write_status(jid, {"status": "running", "progress": pct,
+                            "step": step, "detail": detail})
     try:
-        ok, res = pipeline.run_job(jd, video_path, cfg)
+        ok, res = pipeline.run_job(jd, video_path, cfg, progress_cb=_prog)
         st = {"status": "done" if ok else "error",
               "result": res if ok else None,
               "error": None if ok else str(res)}
