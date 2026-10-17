@@ -48,7 +48,7 @@ def video_fps(path):
         return 30.0
 
 # ---------------- transcription (Groq Whisper free / OpenAI Whisper paid) ----------------
-def transcribe(provider, api_key, video_path, job_dir):
+def transcribe(provider, api_key, video_path, job_dir, language="en"):
     log(job_dir, "Extracting audio…")
     audio = os.path.join(job_dir, "audio.mp3")
     rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-vn",
@@ -75,6 +75,7 @@ def transcribe(provider, api_key, video_path, job_dir):
                 files={"file": ("audio.mp3", f, "audio/mpeg")},
                 data={"model": model,
                       "response_format": "verbose_json",
+                      "language": language,
                       "timestamp_granularities[]": "word"},
                 timeout=600)
         try:
@@ -346,15 +347,25 @@ def _is_keyword(word):
 
 def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
               pos="middle"):
-    """Caption styles: hormozi (gold karaoke), beast (big yellow caps), minimal (small white).
-    pos: top / middle / bottom caption placement."""
+    """Caption styles: hormozi1 (gold karaoke dual-color), hormozi2 (gold karaoke),
+    hormozi3 (inverted: yellow base, white tracker), beast (big yellow caps),
+    leon (orange highlight on black boxes), minimal (small white).
+    'hormozi' is an alias for hormozi1. pos: top / middle / bottom."""
+    if style == "hormozi":
+        style = "hormozi1"
     # caption placement: (ASS alignment, MarginV)
     _POS = {"top": (8, 150), "middle": (5, 30), "bottom": (2, 300)}
     align, marginv = _POS.get(pos, _POS["middle"])
     segs = [w for w in words if w["e"] > start and w["s"] < end]
     lines, cur = [], []
-    per_line = 3 if style == "hormozi" else (3 if style == "beast" else 6)
-    chars = max_chars if style == "hormozi" else (24 if style == "beast" else 42)
+    _PL = {"hormozi1": 3, "hormozi2": 3, "hormozi3": 3, "beast": 3,
+           "leon": 3, "minimal": 6}
+    _CH = {"hormozi1": 30, "hormozi2": 30, "hormozi3": 30, "beast": 24,
+           "leon": 28, "minimal": 42}
+    per_line = _PL.get(style, 3)
+    chars = _CH.get(style, 30)
+    if style in ("hormozi1", "hormozi2", "hormozi3"):
+        chars = max_chars
     for i, w in enumerate(segs):
         cur.append(w)
         txt = " ".join(c["w"] for c in cur)
@@ -380,6 +391,21 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
               "-1,0,0,0,100,100,0,0,1,3,0,%d,10,10,%d,1" % (align, marginv))
         body = lambda ln: _ass_safe(" ".join(c["w"] for c in ln))
         hl = False
+    elif style == "leon":
+        # Submagic LEON: bold orange highlight on opaque black boxes, karaoke
+        st = ("Style: Cap,Montserrat Black,88,&H00FFFFFF&,&H00006BFF&,&H00000000&,&H00000000&,"
+              "-1,0,0,0,100,100,0,0,1,6,0,%d,10,10,%d,1" % (align, marginv))
+        hl = "leon"
+    elif style == "hormozi2":
+        # hormozi variant: white base, yellow tracker only (no keyword color)
+        st = ("Style: Cap,Montserrat Black,96,&H00FFFFFF&,&H003DD9FF&,&H00000000&,&H80000000&,"
+              "-1,0,0,0,100,100,0,0,1,8,0,%d,10,10,%d,1" % (align, marginv))
+        hl = "plain"
+    elif style == "hormozi3":
+        # hormozi inverted: yellow base text, white tracker
+        st = ("Style: Cap,Montserrat Black,96,&H003DD9FF&,&H00FFFFFF&,&H00000000&,&H80000000&,"
+              "-1,0,0,0,100,100,0,0,1,8,0,%d,10,10,%d,1" % (align, marginv))
+        hl = "plain"
     else:
         # hormozi: Montserrat Black, ALL CAPS, white base, yellow tracker,
         # green keyword highlight (OpusClip dual-color), 8px outline
@@ -394,6 +420,7 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
     YELLOW = r"{\c&H003DD9FF&}"   # tracker: currently-spoken word (#FFD93D)
     GREEN = r"{\c&H0014FF39&}"    # keyword highlight (#39FF14)
     WHITE = r"{\c&H00FFFFFF&}"    # base
+    ORANGE = r"{\c&H00006BFF&}"   # leon orange (#FF6B00)
     for ln in lines:
         if not ln:
             continue
@@ -403,12 +430,17 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
                 parts = []
                 for ci, c in enumerate(ln):
                     cw = _ass_safe(c["w"]).upper()
-                    if ci == wi:
-                        col = YELLOW
-                    elif _is_keyword(c["w"]):
+                    if hl == "leon":
+                        # leon: active word orange on black box, rest white
+                        col = ORANGE if ci == wi else WHITE
+                    elif ci == wi:
+                        # hormozi3 tracker is white (inverted), others yellow
+                        col = WHITE if style == "hormozi3" else YELLOW
+                    elif hl is True and _is_keyword(c["w"]):
                         col = GREEN
                     else:
-                        col = WHITE
+                        # hormozi3 base is yellow, others white
+                        col = YELLOW if style == "hormozi3" else WHITE
                     parts.append("%s%s" % (col, cw))
                 out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s" %
                            (ts(w["s"]), ts(min(wend, ln[-1]["e"] + 0.3)), " ".join(parts)))
@@ -466,7 +498,7 @@ def detect_silences(video_path, start, end, job_dir, thresh_db=-40, min_dur=0.8)
     return sils
 
 def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi",
-                auto_zoom=True, caption_pos="middle"):
+                auto_zoom=True, caption_pos="middle", face_track=True):
     s, e = moment["start"], moment["end"]
     dur = e - s
     if dur <= 0:
@@ -528,7 +560,11 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
                               "-c:a", "aac", "-b:a", "160k", out])
     else:
         # smooth face-tracked crop in ONE pass via sendcmd (0.5s samples)
-        track = face_track_x(video_path, s, e, vw, job_dir, step=0.5)
+        # (face_track=False → static center crop)
+        if face_track:
+            track = face_track_x(video_path, s, e, vw, job_dir, step=0.5)
+        else:
+            track = []
         cmds = os.path.join(job_dir, "clip%d.cmds" % idx)
         with open(cmds, "w") as f:
             for tt, x in track:
@@ -585,8 +621,10 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
     n_clips = cfg.get("n_clips", 3)
     caption_pos = cfg.get("caption_pos", "middle")
     auto_zoom = cfg.get("auto_zoom", True)
+    face_track = cfg.get("face_track", True)
+    speech_lang = cfg.get("speech_lang", "en")
     prog(5, "Analyzing content…", "Whisper AI is listening to your video…")
-    ok, words = transcribe(provider, stt_key, video_path, job_dir)
+    ok, words = transcribe(provider, stt_key, video_path, job_dir, language=speech_lang)
     if not ok:
         return False, words
     prog(40, "Analysis complete", "%d words found" % len(words))
@@ -615,7 +653,7 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
              % (i + 1, total, mo.get("title", "")[:40]))
         ok, out = render_clip(video_path, words, mo, i, job_dir, out_dir,
                               style=style, auto_zoom=auto_zoom,
-                              caption_pos=caption_pos)
+                              caption_pos=caption_pos, face_track=face_track)
         _completed[0] += 1
         if ok:
             base = os.path.splitext(os.path.basename(out))[0]
