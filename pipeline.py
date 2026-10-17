@@ -220,6 +220,10 @@ def face_track_x(video_path, start, end, vw, job_dir):
     return sm
 
 # ---------------- word-highlight captions (ASS) ----------------
+def _ass_safe(t):
+    """Escape ASS special chars in transcribed words."""
+    return t.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
+
 def write_ass(job_dir, words, start, end, path, max_chars=30):
     """Hormozi-style captions: 3-4 words/line, active word gold, rest white."""
     segs = [w for w in words if w["e"] > start and w["s"] < end]
@@ -254,7 +258,7 @@ def write_ass(job_dir, words, start, end, path, max_chars=30):
             parts = []
             for ci, c in enumerate(ln):
                 col = GOLD if ci == wi else WHITE
-                parts.append("%s%s" % (col, c["w"]))
+                parts.append("%s%s" % (col, _ass_safe(c["w"])))
             out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s" %
                        (ts(w["s"]), ts(min(wend, ln[-1]["e"] + 0.3)), " ".join(parts)))
     open(path, "w", encoding="utf-8").write("\n".join(out))
@@ -264,12 +268,17 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir):
     s, e = moment["start"], moment["end"]
     dur = e - s
     vw, vh = video_size(video_path)
+    if vw <= 0 or vh <= 0:
+        log(job_dir, "Clip %d: bad video size %dx%d" % (idx + 1, vw, vh))
+        return False, "bad video size"
     # 9:16 crop width; if video already portrait, just scale
     is_portrait = vh >= vw
     cw = int(vh * 9 / 16)
-    if cw >= vw:
+    if cw >= vw or cw <= 0:
         is_portrait = True
-    log(job_dir, "Clip %d: %.0fs-%.0fs (%s)" % (idx + 1, s, e, moment["title"]))
+        cw = vw
+    log(job_dir, "Clip %d: %.0fs-%.0fs (%s) size=%dx%d portrait=%s" %
+        (idx + 1, s, e, moment["title"], vw, vh, is_portrait))
     # face track (only needed for landscape crop)
     track = [] if is_portrait else face_track_x(video_path, s, e, vw, job_dir)
     # build crop expression from track (step every 0.5s)
@@ -288,21 +297,31 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir):
             if tt <= mid:
                 fx = x
         cx = int(max(0, min(vw - cw, fx - cw / 2)))
+        # crop dims must be positive and inside frame
+        cx = max(0, min(cx, vw - cw))
         part = os.path.join(job_dir, "clip%d_p%d.mp4" % (idx, ci))
         ass = os.path.join(job_dir, "clip%d_p%d.ass" % (idx, ci))
         write_ass(job_dir, words, s + t, s + te, ass)
+        ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
+        sub = "subtitles='%s':fontsdir='/usr/share/fonts'" % ass_esc
         if is_portrait:
-            vf = ("scale=1080:1920,subtitles='%s':fontsdir='/usr/share/fonts'" %
-                  ass.replace("'", r"'\''"))
+            vf = "scale=1080:1920,%s" % sub
         else:
-            vf = ("crop=%d:%d:%d:0,scale=1080:1920,subtitles='%s':fontsdir='/usr/share/fonts'" %
-                  (cw, vh, cx, ass.replace("'", r"'\''")))
+            vf = "crop=%d:%d:%d:0,scale=1080:1920,%s" % (cw, vh, cx, sub)
         rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s + t), "-t", str(te - t),
                               "-i", video_path, "-vf", vf,
                               "-c:v", "libx264", "-preset", "fast", "-crf", "19",
                               "-c:a", "aac", "-b:a", "160k", part])
+        if (rc != 0 or not os.path.exists(part)) and os.path.exists(ass):
+            # fallback: render without subtitles (libass/font issue)
+            log(job_dir, "chunk %d subtitles failed, retry plain" % ci)
+            vf_plain = "scale=1080:1920" if is_portrait else "crop=%d:%d:%d:0,scale=1080:1920" % (cw, vh, cx)
+            rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s + t), "-t", str(te - t),
+                                  "-i", video_path, "-vf", vf_plain,
+                                  "-c:v", "libx264", "-preset", "fast", "-crf", "19",
+                                  "-c:a", "aac", "-b:a", "160k", part])
         if rc != 0 or not os.path.exists(part):
-            log(job_dir, "chunk render failed: %s" % err[:200])
+            log(job_dir, "chunk render failed: %s" % err[-1500:])
             return False, "render failed"
         parts.append(part)
         try:
