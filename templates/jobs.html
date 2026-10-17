@@ -1,47 +1,78 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ClipAI — My Jobs</title>
+<title>ClipAI — My Projects</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0a0a0f;--card:#14141c;--border:#262633;--acc:#7c3aed;--acc2:#a855f7;--green:#22c55e;--red:#ef4444;--yel:#eab308;--txt:#f1f1f4;--mut:#9a9ab0}
-body{background:radial-gradient(1000px 500px at 50% -100px,#1e1b3a 0%,var(--bg) 60%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 16px;min-height:100vh}
-.wrap{max-width:900px;margin:0 auto}
-.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-.top a{color:var(--acc2);text-decoration:none;font-size:15px;font-weight:600}
-h1{font-size:26px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:12px;display:flex;gap:16px;align-items:center}
-.card:hover{border-color:var(--acc)}
-.info{flex:1;min-width:0}
-.info b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
-.info .meta{color:var(--mut);font-size:12px;margin-bottom:8px}
-.bar{background:#0d0d14;border-radius:8px;height:10px;overflow:hidden;border:1px solid var(--border)}
-.bar>div{height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:8px;transition:width .5s}
+:root{--bg:#f6f7f9;--card:#fff;--border:#e5e7eb;--txt:#111827;--mut:#6b7280;
+--acc:#ff6b00;--acc-d:#e55e00;--green:#16a34a;--red:#dc2626;--yel:#b45309}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh}
+.layout{display:flex;min-height:100vh}
+.side{width:210px;background:var(--card);border-right:1px solid var(--border);padding:18px 12px;position:sticky;top:0;height:100vh;flex-shrink:0}
+.side .logo{font-size:19px;font-weight:800;padding:4px 10px 16px}
+.side .logo span{color:var(--acc)}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);text-decoration:none;font-size:14px;font-weight:500;margin-bottom:2px}
+.nav a:hover{background:#f1f2f4;color:var(--txt)}
+.nav a.on{background:var(--acc);color:#fff;font-weight:700}
+.nav .sec{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:14px 12px 6px}
+.main{flex:1;padding:28px;max-width:1000px}
+.greet{font-size:26px;font-weight:700;margin-bottom:4px}
+.gsub{color:var(--mut);font-size:14px;margin-bottom:22px}
+.newbtn{display:inline-block;background:linear-gradient(180deg,#ff7d1a,#f25c00);color:#fff;font-weight:700;font-size:15px;border-radius:12px;padding:13px 28px;text-decoration:none;box-shadow:0 4px 14px rgba(255,107,0,.3);margin-bottom:24px}
+.newbtn:hover{transform:translateY(-1px)}
+h2.sec{font-size:16px;margin:6px 0 14px;color:var(--txt)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:.15s}
+.card:hover{box-shadow:0 6px 16px rgba(0,0,0,.09)}
+.card b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:8px 0 4px}
+.card .meta{color:var(--mut);font-size:12px;margin-bottom:10px}
+.badge{font-size:11px;font-weight:700;border-radius:20px;padding:4px 12px;display:inline-block;margin-bottom:4px}
+.badge.queued{background:#fef3c7;color:var(--yel)}
+.badge.running{background:#fff1e6;color:var(--acc-d)}
+.badge.done{background:#dcfce7;color:#15803d}
+.badge.error{background:#fee2e2;color:var(--red)}
+.bar{background:#eef0f2;border-radius:8px;height:10px;overflow:hidden;margin-top:8px}
+.bar>div{height:100%;background:linear-gradient(90deg,#ff6b00,#ff9a3c);border-radius:8px;transition:width .5s}
 .step{font-size:12px;color:var(--mut);margin-top:6px}
-.badge{font-size:12px;font-weight:700;border-radius:20px;padding:6px 14px;white-space:nowrap}
-.badge.queued{background:#3b2f1a;color:var(--yel)}
-.badge.running{background:#1c1530;color:var(--acc2)}
-.badge.done{background:#14532d;color:#86efac}
-.badge.error{background:#3b1a1a;color:#fca5a5}
-.open{background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff;border:0;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
-.empty{text-align:center;color:var(--mut);padding:60px 20px}
+.open{display:inline-block;margin-top:12px;background:linear-gradient(180deg,#ff7d1a,#f25c00);color:#fff;border-radius:10px;padding:9px 20px;font-size:13px;font-weight:700;text-decoration:none}
+.empty{text-align:center;color:var(--mut);padding:50px 20px;background:var(--card);border:1px dashed var(--border);border-radius:16px}
+@media(max-width:760px){.side{display:none}.main{padding:18px}}
 </style></head>
-<body><div class="wrap">
-<div class="top"><a href="/">← New clips</a><h1>📋 My Jobs</h1><span></span></div>
-<div id="list"></div>
+<body><div class="layout">
+<div class="side">
+<div class="logo">✂️ Clip<span style="color:var(--acc)">AI</span></div>
+<div class="nav">
+<a href="/jobs" class="on">🏠 Home</a>
+<a href="/jobs">📅 Calendar</a>
+<a href="/jobs">📊 Analytics</a>
+<a href="/">✨ API &amp; Integrations</a>
+<div class="sec">Folders</div>
+<a href="/jobs">📁 All projects</a>
+<a href="/">➕ New project</a>
+</div>
+</div>
+<div class="main">
+<div class="greet" id="greet">Good Morning</div>
+<div class="gsub">Create viral shorts from your long videos.</div>
+<a class="newbtn" href="/">＋ New Project</a>
+<h2 class="sec">Projects</h2>
+<div class="grid" id="list"></div>
+</div>
 </div>
 <script>
+(function(){const h=new Date().getHours();
+document.getElementById('greet').textContent = h<12?"Good Morning":h<17?"Good Afternoon":"Good Evening";})();
 async function load(){
   const r = await fetch("/api/jobs"); const j = await r.json();
   const box = document.getElementById("list");
-  if(!j.jobs.length){ box.innerHTML = '<div class="empty">No jobs yet.<br><br><a href="/" style="color:var(--acc2)">Create your first clips →</a></div>'; return; }
+  if(!j.jobs.length){ box.innerHTML = '<div class="empty" style="grid-column:1/-1">No projects yet.<br><br><a href="/" style="color:var(--acc);font-weight:700">Create your first clips →</a></div>'; return; }
   box.innerHTML = j.jobs.map(x=>{
     const bc = x.status;
     const badge = bc==="done"?"done":bc==="error"?"error":bc==="running"?"running":"queued";
     const pct = x.progress||0;
     const bar = (bc==="running"||bc==="queued") ? `<div class="bar"><div style="width:${pct}%"></div></div><div class="step">${esc(x.step||"")} ${pct}%</div>` : "";
     const open = bc==="done" ? `<a class="open" href="/job/${x.jid}">Open →</a>` : bc==="running"||bc==="queued" ? `<a class="open" href="/job/${x.jid}">Watch →</a>` : "";
-    const sub = bc==="done" ? `${x.nclips} clips ready` : bc==="error" ? "❌ "+esc((x.error||"failed").slice(0,80)) : (x.source==="youtube"?"🔗 YouTube":"📤 Upload");
-    return `<div class="card"><span class="badge ${badge}">${badge}</span><div class="info"><b>${esc(x.name)}</b><div class="meta">${sub}</div>${bar}</div>${open}</div>`;
+    const sub = bc==="done" ? `${x.nclips} clips ready 🎉` : bc==="error" ? "❌ "+esc((x.error||"failed").slice(0,80)) : (x.source==="youtube"?"🔗 YouTube":"📤 Upload");
+    return `<div class="card"><span class="badge ${badge}">${badge}</span><b>${esc(x.name)}</b><div class="meta">${sub}</div>${bar}${open}</div>`;
   }).join("");
 }
 function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}
