@@ -54,11 +54,11 @@ h1{font-size:24px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
 <script>
 const jid = "{{ jid }}";
 let done = false;
-const STEPS = ["Transcribing", "Finding moments", "Rendering clips", "Finishing"];
+const STEPS = ["Analyzing content", "Finding moments", "Adding captions", "Reframing video", "Finalizing"];
 function col(s){return s>=90?'🔥':s>=80?'⚡':'✨'}
 function renderSteps(pct){
   const box = document.getElementById("steps");
-  const idx = pct < 40 ? 0 : pct < 55 ? 1 : pct < 98 ? 2 : 3;
+  const idx = pct < 40 ? 0 : pct < 55 ? 1 : pct < 58 ? 2 : pct < 98 ? 3 : 4;
   box.innerHTML = STEPS.map((s,i)=>`<span class="step-chip ${i<idx?'ok':i===idx?'on':''}">${i<idx?'✓ ':''}${s}</span>`).join("");
 }
 async function poll(){
@@ -81,7 +81,12 @@ async function poll(){
     const res = j.result || [];
     document.getElementById("empty").style.display = res.length ? "none" : "block";
     res.forEach(c=>{
-      box.innerHTML += `<div class="clip"><div class="th"><video src="/preview/${jid}/${c.file}" controls preload="metadata" playsinline></video><div class="score">${col(c.score)} ${c.score}<br><small>VIRAL</small></div></div><div class="bd"><b>${esc(c.title)}</b><div class="tm">${c.start.toFixed(0)}s – ${c.end.toFixed(0)}s • 9:16 • captions</div><div class="btns"><a class="mp4" href="/dl/${jid}/${c.file}">⬇ MP4</a><a class="srt" href="/dl/${jid}/${c.srt}">📝 SRT</a></div></div></div>`;
+      const subs = c.subs || {};
+      const subbar = ["hook","flow","value","trend"].map(k=>{
+        const v = subs[k] || 0;
+        return `<div style="flex:1"><div style="font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:2px">${k} ${v}</div><div style="background:#0d0d14;border-radius:4px;height:6px"><div style="width:${v*4}%;height:100%;border-radius:4px;background:linear-gradient(90deg,#7c3aed,#a855f7)"></div></div></div>`;
+      }).join("");
+      box.innerHTML += `<div class="clip"><div class="th"><video src="/preview/${jid}/${c.file}" controls preload="metadata" playsinline></video><div class="score">${col(c.score)} ${c.score}<br><small>VIRAL</small></div></div><div class="bd"><b>${esc(c.title)}</b><div class="tm">${c.start.toFixed(0)}s – ${c.end.toFixed(0)}s • 9:16 • captions</div><div style="display:flex;gap:8px;margin-bottom:12px">${subbar}</div><div class="btns"><a class="mp4" href="/dl/${jid}/${c.file}">⬇ MP4</a><a class="srt" href="/dl/${jid}/${c.srt}">📝 SRT</a></div></div></div>`;
     });
     return;
   }
