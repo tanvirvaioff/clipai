@@ -43,19 +43,38 @@ def _read_status(jid):
     return None
 
 def download_youtube(url, jd):
-    """Download video from YouTube URL with yt-dlp. Returns path or (None, err)."""
-    out_tmpl = os.path.join(jd, "yt_source.%(ext)s")
-    rc, so, se = pipeline.run_cmd([
-        "yt-dlp", "-f", "bv*[height<=1080]+ba/b[height<=1080]",
-        "--no-check-certificate", "--no-playlist",
-        "-o", out_tmpl, url], timeout=1800)
-    if rc != 0:
-        return None, "yt-dlp failed: %s" % se[-300:]
+    """Download video from YouTube URL with yt-dlp. Returns path or (None, err).
+    Tries multiple strategies since datacenter IPs get bot-blocked."""
     import glob
-    got = glob.glob(os.path.join(jd, "yt_source.*"))
-    if not got:
-        return None, "yt-dlp produced no file"
-    return got[0], None
+    out_tmpl = os.path.join(jd, "yt_source.%(ext)s")
+    strategies = [
+        # 1. Standard high-res
+        ["yt-dlp", "-f", "bv*[height<=1080]+ba/b[height<=1080]",
+         "--no-check-certificate", "--no-playlist", "-o", out_tmpl, url],
+        # 2. Android client (often bypasses bot check)
+        ["yt-dlp", "-f", "bv*[height<=720]+ba/b[height<=720]",
+         "--no-check-certificate", "--no-playlist",
+         "--extractor-args", "youtube:player_client=android",
+         "-o", out_tmpl, url],
+        # 3. iOS client
+        ["yt-dlp", "-f", "bv*[height<=720]+ba/b[height<=720]",
+         "--no-check-certificate", "--no-playlist",
+         "--extractor-args", "youtube:player_client=ios",
+         "-o", out_tmpl, url],
+        # 4. Last resort: format 18 (360p progressive, usually works)
+        ["yt-dlp", "-f", "18",
+         "--no-check-certificate", "--no-playlist", "-o", out_tmpl, url],
+    ]
+    last_err = ""
+    for i, cmd in enumerate(strategies):
+        rc, so, se = pipeline.run_cmd(cmd, timeout=1800)
+        if rc == 0:
+            got = glob.glob(os.path.join(jd, "yt_source.*"))
+            if got:
+                return got[0], None
+        last_err = se[-300:] if se else "unknown"
+        pipeline.log(jd, "yt-dlp strategy %d failed, trying next" % (i + 1))
+    return None, "YouTube download blocked (bot detection). Try uploading the file directly. Last error: %s" % last_err
 
 def _meta_path(jid):
     return os.path.join(JOBS, jid, "meta.json")
