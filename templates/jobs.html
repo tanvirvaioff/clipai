@@ -45,16 +45,16 @@ h2.sec{font-size:16px;margin:6px 0 14px;color:var(--txt)}
 <a href="/jobs" class="on">🏠 Home</a>
 <a href="/jobs">📅 Calendar</a>
 <a href="/jobs">📊 Analytics</a>
-<a href="/">✨ API &amp; Integrations</a>
+<a href="/dashboard">✨ API &amp; Integrations</a>
 <div class="sec">Folders</div>
 <a href="/jobs">📁 All projects</a>
-<a href="/">➕ New project</a>
+<a href="/dashboard">➕ New project</a>
 </div>
 </div>
 <div class="main">
 <div class="greet" id="greet">Good Morning</div>
 <div class="gsub">Create viral shorts from your long videos.</div>
-<a class="newbtn" href="/">＋ New Project</a>
+<a class="newbtn" href="/dashboard">＋ New Project</a>
 <h2 class="sec">Projects</h2>
 <div class="grid" id="list"></div>
 </div>
@@ -65,7 +65,7 @@ document.getElementById('greet').textContent = h<12?"Good Morning":h<17?"Good Af
 async function load(){
   const r = await fetch("/api/jobs"); const j = await r.json();
   const box = document.getElementById("list");
-  if(!j.jobs.length){ box.innerHTML = '<div class="empty" style="grid-column:1/-1">No projects yet.<br><br><a href="/" style="color:var(--acc);font-weight:700">Create your first clips →</a></div>'; return; }
+  if(!j.jobs.length){ box.innerHTML = '<div class="empty" style="grid-column:1/-1">No projects yet.<br><br><a href="/dashboard" style="color:var(--acc);font-weight:700">Create your first clips →</a></div>'; return; }
   box.innerHTML = j.jobs.map(x=>{
     const bc = x.status;
     const badge = bc==="done"?"done":bc==="error"?"error":bc==="running"?"running":"queued";
