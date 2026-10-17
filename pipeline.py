@@ -259,61 +259,101 @@ def _parse_subs(mo):
 _YUNET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "yunet.onnx")
 _FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
+def _frame_hist_diff(prev_hist, frame):
+    """Histogram chi-square difference between frames (0=same, large=different)."""
+    hist = cv2.calcHist([frame], [0, 1, 2], None, [16, 16, 16], [0, 256, 0, 256, 0, 256])
+    hist = cv2.normalize(hist, hist).flatten()
+    if prev_hist is None:
+        return 0.0, hist
+    diff = cv2.compareHist(prev_hist, hist, cv2.HISTCMP_CHISQR)
+    return float(diff), hist
+
+
 def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
-    """Return smoothed face-center positions: list of (time, x, y).
+    """Return smoothed face-center positions: list of (time, x, y, n_faces, x2, y2).
 
-    Tracks BOTH x and y so the 9:16 crop follows the face vertically too
-    (fixes face cut off at top/bottom).
+    Tracks BOTH x and y so the 9:16 crop follows the face vertically too.
+    Also returns face count + 2nd face position for SPLIT mode detection.
 
-    Fixes for erratic jumping:
-    - hysteresis: only switch to a NEW face region after it is the consistent
-      largest face for 2+ seconds (avoids flicker between people)
-    - no-face: KEEP last position (never jump to center/wide)
-    - largest face preferred (closest to camera = likely speaker)
-    - slew-rate limit: crop interpolates, max ~0.8 frame-widths/sec
+    Improvements (OpenShorts-inspired):
+    - scene cut detection: histogram comparison resets tracker on cuts
+      (no smoothing across cuts — avoids "ghost pan" artifacts)
+    - 2-face detection: returns 2nd largest face for split layout
+    - exponential smoothing (alpha=0.3): responsive yet smooth
+    - hysteresis: only switch faces after 2+ seconds consistency
+    - no-face: KEEP last position (never jump to center)
     """
     detector = cv2.FaceDetectorYN_create(_YUNET, "", (320, 320))
     cap = cv2.VideoCapture(video_path)
-    samples = []  # (t_rel, x, y) or (t_rel, None, None)
+    # samples: (t_rel, x, y, n_faces, x2, y2, is_cut)
+    samples = []
+    prev_hist = None
     t = start
     while t < end:
         cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
         ok, frame = cap.read()
         if not ok:
-            samples.append((t - start, None, None))
+            samples.append((t - start, None, None, 0, None, None, False))
             t += step
             continue
         h, w = frame.shape[:2]
+        # scene cut detection (downscaled for speed)
+        small = cv2.resize(frame, (64, 36))
+        diff, prev_hist = _frame_hist_diff(prev_hist, small)
+        is_cut = diff > 2.5  # tuned threshold for hard cuts
         detector.setInputSize((w, h))
         _, faces = detector.detect(frame)
         if faces is not None and len(faces):
-            # largest face: [x, y, w, h, ...] — closest to camera = speaker
-            f = max(faces, key=lambda b: b[2] * b[3])
-            x = float(f[0] + f[2] / 2) / w * vw
-            y = float(f[1] + f[3] / 2) / h * vh_src
-            samples.append((t - start, x, y))
+            # sort by area desc; take top 2
+            order = sorted(faces, key=lambda b: b[2] * b[3], reverse=True)
+            f1 = order[0]
+            x = float(f1[0] + f1[2] / 2) / w * vw
+            y = float(f1[1] + f1[3] / 2) / h * vh_src
+            n = len(order)
+            x2 = y2 = None
+            if n >= 2:
+                f2 = order[1]
+                # only count as 2nd face if reasonably large (>25% of largest)
+                if f2[2] * f2[3] >= 0.25 * f1[2] * f1[3]:
+                    x2 = float(f2[0] + f2[2] / 2) / w * vw
+                    y2 = float(f2[1] + f2[3] / 2) / h * vh_src
+                else:
+                    n = 1
+            samples.append((t - start, x, y, n, x2, y2, is_cut))
         else:
-            samples.append((t - start, None, None))
+            samples.append((t - start, None, None, 0, None, None, is_cut))
         t += step
     cap.release()
     if not samples:
-        return [(0.0, vw / 2, vh_src / 2)]
+        return [(0.0, vw / 2, vh_src / 2, 0, None, None)]
 
-    # Stage 1: hysteresis target selection (x and y independently)
+    # Stage 1: hysteresis target selection with scene-cut resets
     REGION_X = vw * 0.18
     REGION_Y = vh_src * 0.18
     HYST_N = max(2, int(2.0 / step) + 1)
     tx = samples[0][1] if samples[0][1] is not None else vw / 2
     ty = samples[0][2] if samples[0][2] is not None else vh_src / 2
-    pend = [None, 0]  # pending_x, pending_n
+    # 2nd face tracking (for split mode)
+    t2x = samples[0][4] if samples[0][4] is not None else vw / 2
+    t2y = samples[0][5] if samples[0][5] is not None else vh_src / 2
+    pend = [None, 0]
     pendy = [None, 0]
-    targets = []
-    for t_rel, x, y in samples:
+    targets = []  # (t_rel, tx, ty, n, t2x, t2y)
+    for t_rel, x, y, n, x2, y2, is_cut in samples:
+        if is_cut:
+            # SCENE CUT: snap targets to new detection, clear pending
+            if x is not None:
+                tx, ty = x, y
+            if x2 is not None:
+                t2x, t2y = x2, y2
+            pend, pendy = [None, 0], [None, 0]
+            targets.append((t_rel, tx, ty, n, t2x, t2y))
+            continue
         if x is None:
             pend, pendy = [None, 0], [None, 0]
-            targets.append((t_rel, tx, ty))
+            targets.append((t_rel, tx, ty, n, t2x, t2y))
             continue
-        # X axis
+        # X axis hysteresis
         if abs(x - tx) <= REGION_X:
             tx = 0.75 * tx + 0.25 * x
             pend = [None, 0]
@@ -326,7 +366,7 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
             if pend[1] >= HYST_N:
                 tx = pend[0]
                 pend = [None, 0]
-        # Y axis
+        # Y axis hysteresis
         if abs(y - ty) <= REGION_Y:
             ty = 0.75 * ty + 0.25 * y
             pendy = [None, 0]
@@ -339,28 +379,62 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
             if pendy[1] >= HYST_N:
                 ty = pendy[0]
                 pendy = [None, 0]
-        targets.append((t_rel, tx, ty))
+        # 2nd face: simple follow (no hysteresis — split uses averaged pos)
+        if x2 is not None:
+            t2x = 0.7 * t2x + 0.3 * x2
+            t2y = 0.7 * t2y + 0.3 * y2
+        targets.append((t_rel, tx, ty, n, t2x, t2y))
 
-    # Stage 2: slew-rate limit + moving average (both axes)
+    # Stage 2: slew-rate limit + EXPONENTIAL smoothing (alpha=0.3)
+    # (more responsive than moving average, still smooth)
     MAX_DX = vw * 0.8 * step
     MAX_DY = vh_src * 0.8 * step
-    limited = []
+    ALPHA = 0.3
+    sm = []
     px, py = targets[0][1], targets[0][2]
-    for t_rel, x, y in targets:
+    p2x, p2y = targets[0][4], targets[0][5]
+    for i, (t_rel, x, y, n, x2f, y2f) in enumerate(targets):
+        # slew-rate limit on primary face
         dx, dy = x - px, y - py
         if abs(dx) > MAX_DX:
             x = px + math.copysign(MAX_DX, dx)
         if abs(dy) > MAX_DY:
             y = py + math.copysign(MAX_DY, dy)
-        limited.append((t_rel, x, y))
-        px, py = x, y
-    sm = []
-    for i, (t_rel, x, y) in enumerate(limited):
-        win = limited[max(0, i - 2):i + 3]
-        sm.append((t_rel,
-                   sum(p[1] for p in win) / len(win),
-                   sum(p[2] for p in win) / len(win)))
+        # exponential smoothing
+        sx = ALPHA * x + (1 - ALPHA) * px
+        sy = ALPHA * y + (1 - ALPHA) * py
+        # 2nd face exponential smoothing
+        s2x = ALPHA * x2f + (1 - ALPHA) * p2x
+        s2y = ALPHA * y2f + (1 - ALPHA) * p2y
+        sm.append((t_rel, sx, sy, n, s2x, s2y))
+        px, py, p2x, p2y = sx, sy, s2x, s2y
     return sm
+
+
+def is_split_scene(track, step=0.5):
+    """Check if 2 faces are dominant: both visible >3s and >60% of samples.
+
+    Returns (is_split, avg_x1, avg_y1, avg_x2, avg_y2) for split layout.
+    """
+    two_face = [s for s in track if s[3] >= 2 and s[4] is not None]
+    if not two_face:
+        return False, 0, 0, 0, 0
+    # need >3 seconds of 2-face presence
+    if len(two_face) * step < 3.0:
+        return False, 0, 0, 0, 0
+    # need >60% of all samples to have 2 faces
+    if len(two_face) < 0.6 * len(track):
+        return False, 0, 0, 0, 0
+    # average positions for stable split
+    ax1 = sum(s[1] for s in two_face) / len(two_face)
+    ay1 = sum(s[2] for s in two_face) / len(two_face)
+    ax2 = sum(s[4] for s in two_face) / len(two_face)
+    ay2 = sum(s[5] for s in two_face) / len(two_face)
+    # faces should be side-by-side (horizontal separation > vertical)
+    if abs(ax1 - ax2) < abs(ay1 - ay2) * 0.5:
+        return False, 0, 0, 0, 0
+    return True, ax1, ay1, ax2, ay2
+
 
 # ---------------- word-highlight captions (ASS) ----------------
 def _ass_safe(t):
@@ -620,36 +694,67 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
     else:
         # smooth face-tracked crop in ONE pass via sendcmd (0.5s samples)
         # (face_track=False → static center crop)
+        # SPLIT MODE: 2 faces side-by-side → stacked vertical layout (OpenShorts-style)
         if face_track:
             track = face_track_x(video_path, s, e, vw, vh, job_dir, step=0.5)
         else:
             track = []
-        cmds = os.path.join(job_dir, "clip%d.cmds" % idx)
-        with open(cmds, "w") as f:
-            for tt, x, y in track:
-                cx = int(max(0, min(vw - cw, x - cw / 2)))
-                cy = int(max(0, min(vh - vh, y - vh / 2)))
-                f.write("%.1f crop x %d;\n" % (tt, cx))
-                f.write("%.1f crop y %d;\n" % (tt, cy))
-        t0x = track[0][1] if track else vw / 2
-        t0y = track[0][2] if track else vh / 2
-        init_cx = int(max(0, min(vw - cw, t0x - cw / 2)))
-        init_cy = int(max(0, min(vh - vh, t0y - vh / 2)))
-        vf = ",".join(p for p in [
-            "sendcmd=f='%s'" % cmds.replace("'", r"'\''"),
-            "crop=%d:%d:x=%d:y=%d" % (cw, vh, init_cx, init_cy),
-            "%s%s" % (prescale, zfilter), sub] if p)
-        rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
-                              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                              "-c:a", "aac", "-b:a", "160k", out])
-        try:
-            os.remove(cmds)
-        except Exception:
-            pass
-        if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
-            log(job_dir, "clip %d subtitles FAILED: %s" % (idx + 1, err[-800:]))
-            # Don't silently retry without captions — fail loudly so we can fix it
-            return False, "caption render failed: %s" % err[-300:]
+        split, sx1, sy1, sx2, sy2 = is_split_scene(track) if track else (False, 0, 0, 0, 0)
+        if split:
+            log(job_dir, "clip %d: SPLIT mode (2 speakers)" % (idx + 1))
+            # two 9:16 crops stacked → 1080x1920 (each 1080x960)
+            # left face → top panel, right face → bottom panel
+            if sx1 > sx2:  # ensure sx1 is left
+                sx1, sy1, sx2, sy2 = sx2, sy2, sx1, sy1
+            c1x = int(max(0, min(vw - cw, sx1 - cw / 2)))
+            c2x = int(max(0, min(vw - cw, sx2 - cw / 2)))
+            # filter_complex: crop each face, scale to 1080x960, vstack
+            fc = (
+                "[0:v]crop=%d:%d:%d:0,scale=1080:960[top];"
+                "[0:v]crop=%d:%d:%d:0,scale=1080:960[bottom];"
+                "[top][bottom]vstack=inputs=2,vstack_out" % (cw, vh, c1x, cw, vh, c2x)
+            )
+            # apply prescale/zoom + subtitles after vstack
+            post = ",".join(p for p in ["%s%s" % (prescale, zfilter), sub] if p)
+            if post:
+                fc += "," + post
+            else:
+                fc += ",null"
+            rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur),
+                                  "-filter_complex", fc,
+                                  "-map", "[vstack_out]", "-map", "0:a?",
+                                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                                  "-c:a", "aac", "-b:a", "160k", out])
+            if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
+                log(job_dir, "clip %d split subtitles FAILED: %s" % (idx + 1, err[-800:]))
+                return False, "caption render failed: %s" % err[-300:]
+        else:
+            cmds = os.path.join(job_dir, "clip%d.cmds" % idx)
+            with open(cmds, "w") as f:
+                for tt, x, y, n, x2, y2 in track:
+                    cx = int(max(0, min(vw - cw, x - cw / 2)))
+                    cy = int(max(0, min(vh - vh, y - vh / 2)))
+                    f.write("%.1f crop x %d;\n" % (tt, cx))
+                    f.write("%.1f crop y %d;\n" % (tt, cy))
+            t0x = track[0][1] if track else vw / 2
+            t0y = track[0][2] if track else vh / 2
+            init_cx = int(max(0, min(vw - cw, t0x - cw / 2)))
+            init_cy = int(max(0, min(vh - vh, t0y - vh / 2)))
+            vf = ",".join(p for p in [
+                "sendcmd=f='%s'" % cmds.replace("'", r"'\''"),
+                "crop=%d:%d:x=%d:y=%d" % (cw, vh, init_cx, init_cy),
+                "%s%s" % (prescale, zfilter), sub] if p)
+            rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
+                                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                                  "-c:a", "aac", "-b:a", "160k", out])
+            try:
+                os.remove(cmds)
+            except Exception:
+                pass
+            if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
+                log(job_dir, "clip %d subtitles FAILED: %s" % (idx + 1, err[-800:]))
+                # Don't silently retry without captions — fail loudly so we can fix it
+                return False, "caption render failed: %s" % err[-300:]
     if rc != 0 or not os.path.exists(out):
         log(job_dir, "clip render failed: %s" % err[-1500:])
         return False, "render failed"
