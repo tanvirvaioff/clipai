@@ -523,8 +523,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
                    "y='ih/2-(ih/zoom/2)':d=1:s=1080x1920" % frames)
     if is_portrait:
         vf = "%s%s,%s" % (prescale, zfilter, sub)
-        rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
-                              "-i", video_path, "-vf", vf,
+        rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
                               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                               "-c:a", "aac", "-b:a", "160k", out])
     else:
@@ -538,8 +537,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
         init_cx = int(max(0, min(vw - cw, (track[0][1] if track else vw / 2) - cw / 2)))
         vf = ("sendcmd=f='%s',crop=%d:%d:x=%d:y=0,%s%s,%s" %
               (cmds.replace("'", r"'\''"), cw, vh, init_cx, prescale, zfilter, sub))
-        rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
-                              "-i", video_path, "-vf", vf,
+        rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
                               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                               "-c:a", "aac", "-b:a", "160k", out])
         try:
@@ -549,8 +547,8 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
         if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
             log(job_dir, "clip %d subtitles failed, retry plain" % (idx + 1))
             vf_plain = "crop=%d:%d:%d:0,scale=1080:1920" % (cw, vh, init_cx)
-            rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
-                                  "-i", video_path, "-vf", vf_plain,
+            rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur),
+                                  "-vf", vf_plain,
                                   "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                                   "-c:a", "aac", "-b:a", "160k", out])
     if rc != 0 or not os.path.exists(out):
