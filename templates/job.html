@@ -11,6 +11,9 @@ h1{font-size:24px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
 .badge.done{background:var(--green)}.badge.err{background:var(--red)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
 #log{background:#0d0d14;border:1px solid var(--border);border-radius:12px;padding:14px;font-family:ui-monospace,monospace;font-size:12.5px;height:240px;overflow-y:auto;white-space:pre-wrap;color:#9fb3c8;line-height:1.5}
+.step-chip{font-size:11px;padding:4px 10px;border-radius:20px;background:#1e1e2a;border:1px solid var(--border);color:var(--mut)}
+.step-chip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.step-chip.ok{background:#14532d;color:#86efac;border-color:#14532d}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
 .clip{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:.2s}
 .clip:hover{border-color:var(--acc);transform:translateY(-2px)}
@@ -31,18 +34,44 @@ h1{font-size:24px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
 </style></head>
 <body><div class="wrap">
 <h1><span class="spin">⏳</span> <span id="ttl">Processing your video…</span> <span id="st" class="badge">running</span></h1>
-<div class="card"><div id="log">starting…</div></div>
+<div class="card">
+<div style="margin-bottom:14px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<span id="step" style="font-weight:700;font-size:15px">Starting…</span>
+<span id="pct" style="font-weight:800;font-size:18px;color:var(--acc2)">0%</span>
+</div>
+<div style="background:#0d0d14;border-radius:10px;height:14px;overflow:hidden;border:1px solid var(--border)">
+<div id="bar" style="height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7,#ec4899);border-radius:10px;transition:width .5s"></div>
+</div>
+<div id="detail" style="color:var(--mut);font-size:13px;margin-top:8px"></div>
+<div id="steps" style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"></div>
+</div>
+<div id="log" style="max-height:120px">starting…</div>
+</div>
 <div id="empty">No clips yet — still working…</div>
 <div class="grid" id="clips"></div>
 </div>
 <script>
 const jid = "{{ jid }}";
 let done = false;
+const STEPS = ["Transcribing", "Finding moments", "Rendering clips", "Finishing"];
 function col(s){return s>=90?'🔥':s>=80?'⚡':'✨'}
+function renderSteps(pct){
+  const box = document.getElementById("steps");
+  const idx = pct < 40 ? 0 : pct < 55 ? 1 : pct < 98 ? 2 : 3;
+  box.innerHTML = STEPS.map((s,i)=>`<span class="step-chip ${i<idx?'ok':i===idx?'on':''}">${i<idx?'✓ ':''}${s}</span>`).join("");
+}
 async function poll(){
   const r = await fetch("/api/job/"+jid); const j = await r.json();
   const lg = document.getElementById("log");
   lg.textContent = j.log || "starting…"; lg.scrollTop = 1e9;
+  // progress bar
+  const pct = j.progress || 0;
+  document.getElementById("bar").style.width = pct + "%";
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("step").textContent = j.step || "Working…";
+  document.getElementById("detail").textContent = j.detail || "";
+  renderSteps(pct);
   const st = document.getElementById("st");
   if(j.status === "done" && !done){
     done = true; st.textContent = "done"; st.className = "badge done";
