@@ -246,25 +246,28 @@ def _parse_subs(mo):
 _YUNET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "yunet.onnx")
 _FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
-def face_track_x(video_path, start, end, vw, job_dir, step=0.5):
-    """Return smoothed face-center x positions: list of (time, x).
+def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
+    """Return smoothed face-center positions: list of (time, x, y).
+
+    Tracks BOTH x and y so the 9:16 crop follows the face vertically too
+    (fixes face cut off at top/bottom).
 
     Fixes for erratic jumping:
     - hysteresis: only switch to a NEW face region after it is the consistent
       largest face for 2+ seconds (avoids flicker between people)
     - no-face: KEEP last position (never jump to center/wide)
     - largest face preferred (closest to camera = likely speaker)
-    - slew-rate limit: crop x interpolates, max ~0.8 frame-widths/sec
+    - slew-rate limit: crop interpolates, max ~0.8 frame-widths/sec
     """
     detector = cv2.FaceDetectorYN_create(_YUNET, "", (320, 320))
     cap = cv2.VideoCapture(video_path)
-    samples = []  # (t_rel, x or None)
+    samples = []  # (t_rel, x, y) or (t_rel, None, None)
     t = start
     while t < end:
         cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
         ok, frame = cap.read()
         if not ok:
-            samples.append((t - start, None))
+            samples.append((t - start, None, None))
             t += step
             continue
         h, w = frame.shape[:2]
@@ -274,56 +277,76 @@ def face_track_x(video_path, start, end, vw, job_dir, step=0.5):
             # largest face: [x, y, w, h, ...] — closest to camera = speaker
             f = max(faces, key=lambda b: b[2] * b[3])
             x = float(f[0] + f[2] / 2) / w * vw
-            samples.append((t - start, x))
+            y = float(f[1] + f[3] / 2) / h * vh_src
+            samples.append((t - start, x, y))
         else:
-            samples.append((t - start, None))
+            samples.append((t - start, None, None))
         t += step
     cap.release()
     if not samples:
-        return [(0.0, vw / 2)]
+        return [(0.0, vw / 2, vh_src / 2)]
 
-    # Stage 1: hysteresis target selection
-    REGION = vw * 0.18          # same-face region radius
-    HYST_N = max(2, int(2.0 / step) + 1)  # 2+ full seconds of consistency to switch
-    target = samples[0][1] if samples[0][1] is not None else vw / 2
-    pending_x, pending_n = None, 0
+    # Stage 1: hysteresis target selection (x and y independently)
+    REGION_X = vw * 0.18
+    REGION_Y = vh_src * 0.18
+    HYST_N = max(2, int(2.0 / step) + 1)
+    tx = samples[0][1] if samples[0][1] is not None else vw / 2
+    ty = samples[0][2] if samples[0][2] is not None else vh_src / 2
+    pend = [None, 0]  # pending_x, pending_n
+    pendy = [None, 0]
     targets = []
-    for t_rel, x in samples:
+    for t_rel, x, y in samples:
         if x is None:
-            # NO FACE: keep last position, do NOT drift to center
-            pending_x, pending_n = None, 0
-            targets.append((t_rel, target))
+            pend, pendy = [None, 0], [None, 0]
+            targets.append((t_rel, tx, ty))
             continue
-        if abs(x - target) <= REGION:
-            # same face region: follow smoothly
-            target = 0.75 * target + 0.25 * x
-            pending_x, pending_n = None, 0
+        # X axis
+        if abs(x - tx) <= REGION_X:
+            tx = 0.75 * tx + 0.25 * x
+            pend = [None, 0]
         else:
-            # candidate new face: require consistency before switching
-            if pending_x is None or abs(x - pending_x) > REGION:
-                pending_x, pending_n = x, 1
+            if pend[0] is None or abs(x - pend[0]) > REGION_X:
+                pend = [x, 1]
             else:
-                pending_n += 1
-                pending_x = 0.75 * pending_x + 0.25 * x
-            if pending_n >= HYST_N:
-                target = pending_x
-                pending_x, pending_n = None, 0
-        targets.append((t_rel, target))
+                pend[1] += 1
+                pend[0] = 0.75 * pend[0] + 0.25 * x
+            if pend[1] >= HYST_N:
+                tx = pend[0]
+                pend = [None, 0]
+        # Y axis
+        if abs(y - ty) <= REGION_Y:
+            ty = 0.75 * ty + 0.25 * y
+            pendy = [None, 0]
+        else:
+            if pendy[0] is None or abs(y - pendy[0]) > REGION_Y:
+                pendy = [y, 1]
+            else:
+                pendy[1] += 1
+                pendy[0] = 0.75 * pendy[0] + 0.25 * y
+            if pendy[1] >= HYST_N:
+                ty = pendy[0]
+                pendy = [None, 0]
+        targets.append((t_rel, tx, ty))
 
-    # Stage 2: slew-rate limit (~0.8 widths/sec) + moving average
+    # Stage 2: slew-rate limit + moving average (both axes)
     MAX_DX = vw * 0.8 * step
+    MAX_DY = vh_src * 0.8 * step
     limited = []
-    prev = targets[0][1]
-    for t_rel, x in targets:
-        dx = x - prev
+    px, py = targets[0][1], targets[0][2]
+    for t_rel, x, y in targets:
+        dx, dy = x - px, y - py
         if abs(dx) > MAX_DX:
-            x = prev + math.copysign(MAX_DX, dx)
-        limited.append((t_rel, x))
-        prev = x
+            x = px + math.copysign(MAX_DX, dx)
+        if abs(dy) > MAX_DY:
+            y = py + math.copysign(MAX_DY, dy)
+        limited.append((t_rel, x, y))
+        px, py = x, y
     sm = []
-    for i, (t_rel, x) in enumerate(limited):
+    for i, (t_rel, x, y) in enumerate(limited):
         win = limited[max(0, i - 2):i + 3]
-        sm.append((t_rel, sum(p[1] for p in win) / len(win)))
+        sm.append((t_rel,
+                   sum(p[1] for p in win) / len(win),
+                   sum(p[2] for p in win) / len(win)))
     return sm
 
 # ---------------- word-highlight captions (ASS) ----------------
@@ -585,18 +608,23 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
         # smooth face-tracked crop in ONE pass via sendcmd (0.5s samples)
         # (face_track=False → static center crop)
         if face_track:
-            track = face_track_x(video_path, s, e, vw, job_dir, step=0.5)
+            track = face_track_x(video_path, s, e, vw, vh, job_dir, step=0.5)
         else:
             track = []
         cmds = os.path.join(job_dir, "clip%d.cmds" % idx)
         with open(cmds, "w") as f:
-            for tt, x in track:
+            for tt, x, y in track:
                 cx = int(max(0, min(vw - cw, x - cw / 2)))
+                cy = int(max(0, min(vh - vh, y - vh / 2)))
                 f.write("%.1f crop x %d;\n" % (tt, cx))
-        init_cx = int(max(0, min(vw - cw, (track[0][1] if track else vw / 2) - cw / 2)))
+                f.write("%.1f crop y %d;\n" % (tt, cy))
+        t0x = track[0][1] if track else vw / 2
+        t0y = track[0][2] if track else vh / 2
+        init_cx = int(max(0, min(vw - cw, t0x - cw / 2)))
+        init_cy = int(max(0, min(vh - vh, t0y - vh / 2)))
         vf = ",".join(p for p in [
             "sendcmd=f='%s'" % cmds.replace("'", r"'\''"),
-            "crop=%d:%d:x=%d:y=0" % (cw, vh, init_cx),
+            "crop=%d:%d:x=%d:y=%d" % (cw, vh, init_cx, init_cy),
             "%s%s" % (prescale, zfilter), sub] if p)
         rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
                               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
