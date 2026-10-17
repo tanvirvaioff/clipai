@@ -10,8 +10,10 @@ import pipeline
 BASE = os.path.dirname(os.path.abspath(__file__))
 UPLOAD = os.path.join(BASE, "uploads")
 JOBS = os.path.join(BASE, "jobs")
+STAGING = os.path.join(BASE, "staging")
 os.makedirs(UPLOAD, exist_ok=True)
 os.makedirs(JOBS, exist_ok=True)
+os.makedirs(STAGING, exist_ok=True)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB
@@ -120,10 +122,95 @@ def job_worker(jid):
 def index():
     return render_template("index.html")
 
+@app.route("/workflow", methods=["POST"])
+def workflow():
+    """OpusClip-style settings screen: video preview + all options."""
+    yt_url = request.form.get("youtube_url", "").strip()
+    f = request.files.get("video")
+    src = {}
+    if yt_url:
+        import re as _re
+        m = _re.search(r"(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)([A-Za-z0-9_-]{6,})", yt_url)
+        vid = m.group(1) if m else ""
+        src = {"kind": "youtube", "url": yt_url,
+               "thumb": "https://img.youtube.com/vi/%s/hqdefault.jpg" % vid if vid else "",
+               "title": yt_url[:70], "duration": 0}
+    elif f and f.filename:
+        fn = secure_filename(f.filename)
+        token = uuid.uuid4().hex[:12]
+        sp = os.path.join(STAGING, token + "_" + fn)
+        f.save(sp)
+        dur = pipeline.video_duration(sp)
+        w, h = pipeline.video_size(sp)
+        res = "%dp" % h if h else ""
+        src = {"kind": "upload", "token": token, "filename": fn,
+               "title": fn, "duration": dur, "res": res,
+               "preview_url": "/staging/%s" % os.path.basename(sp)}
+    else:
+        return "No video given", 400
+    return render_template("workflow.html", src=src)
+
+@app.route("/staging/<fn>")
+def staging(fn):
+    return send_from_directory(STAGING, fn)
+
 @app.route("/start", methods=["POST"])
 def start():
-    # BULK: multiple files + multiple YouTube URLs (one per line)
+    # OpusClip preset name -> pipeline caption style
+    _PRESET = {"none": "none", "karaoke": "hormozi1", "mozi": "hormozi2",
+               "deepdiver": "hormozi3", "youshaei": "hormozi2",
+               "podp": "minimal", "beasty": "beast", "simple": "minimal",
+               "popline": "leon", "thinkmedia": "beast"}
+    preset = request.form.get("caption_preset", "").strip().lower()
+    # clip duration presets -> min/max length
+    _DUR = {"auto": (20, 50), "15-30": (15, 30), "30-60": (30, 60), "60-90": (60, 90),
+            "0-30s": (10, 30), "30-60s": (30, 60), "60-180s": (60, 180),
+            "auto0-3m": (20, 50)}
+    _lo, _hi = _DUR.get(request.form.get("clip_duration", "auto"), (20, 50))
+    _clen = request.form.get("clip_length", "")
+    if _clen:
+        _lo, _hi = _DUR.get(_clen, (_lo, _hi))
+    # timeframe (seconds; empty = whole video)
+    tf = None
+    try:
+        ts = request.form.get("tf_start", "").strip()
+        te = request.form.get("tf_end", "").strip()
+        if ts != "" or te != "":
+            tf = [float(ts or 0), float(te or 0)]
+            if tf[1] <= tf[0]:
+                tf = None
+    except Exception:
+        tf = None
+    cfg = {
+        "provider": request.form.get("provider", "openai"),
+        "groq_key": request.form.get("groq_key", "").strip(),
+        "openai_key": request.form.get("openai_key", "").strip(),
+        "n_clips": int(request.form.get("n_clips", 3)),
+        "min_len": int(request.form.get("min_len", _lo)),
+        "max_len": int(request.form.get("max_len", _hi)),
+        "caption_style": _PRESET.get(preset) or request.form.get("caption_style", "hormozi"),
+        "caption_pos": request.form.get("caption_pos", "middle"),
+        "auto_zoom": request.form.get("auto_zoom", "on") == "on",
+        "face_track": request.form.get("face_track", "on") == "on",
+        "speech_lang": request.form.get("speech_lang", "en"),
+        # OpusClip workflow options
+        "clip_mode": request.form.get("clip_mode", "ai"),
+        "clip_model": request.form.get("clip_model", "clipbasic"),
+        "genre": request.form.get("genre", "Auto"),
+        "moment_prompt": request.form.get("moment_prompt", "").strip(),
+        "auto_headline": request.form.get("auto_headline", "on") == "on",
+        "timeframe": tf,
+        "source_name": request.form.get("source_name", "video")[:80],
+    }
+    # server default keys fallback
+    if not cfg["groq_key"]:
+        cfg["groq_key"] = os.environ.get("GROQ_KEY", "")
+    if not cfg["openai_key"]:
+        cfg["openai_key"] = os.environ.get("OPENAI_KEY", "")
+    # BULK (old form): multiple files + multiple YouTube URLs (one per line)
     files = [f for f in request.files.getlist("video") if f and f.filename]
+    # workflow form: staged upload token or single youtube url
+    wf_token = request.form.get("wf_token", "").strip()
     yt_urls = []
     for u in request.form.get("youtube_urls", "").replace(",", "\n").splitlines():
         u = u.strip()
@@ -132,30 +219,25 @@ def start():
     single_yt = request.form.get("youtube_url", "").strip()
     if single_yt and single_yt not in yt_urls:
         yt_urls.insert(0, single_yt)
-    if not files and not yt_urls:
+    staged = []
+    if wf_token:
+        import glob as _glob
+        got = _glob.glob(os.path.join(STAGING, wf_token + "_*"))
+        if got:
+            staged.append(got[0])
+    if not files and not yt_urls and not staged:
         return "No videos uploaded or YouTube URLs given", 400
-    # clip duration presets → min/max length
-    _DUR = {"auto": (20, 50), "15-30": (15, 30), "30-60": (30, 60), "60-90": (60, 90)}
-    _lo, _hi = _DUR.get(request.form.get("clip_duration", "auto"), (20, 50))
-    cfg = {
-        "provider": request.form.get("provider", "openai"),
-        "groq_key": request.form.get("groq_key", "").strip(),
-        "openai_key": request.form.get("openai_key", "").strip(),
-        "n_clips": int(request.form.get("n_clips", 3)),
-        "min_len": int(request.form.get("min_len", _lo)),
-        "max_len": int(request.form.get("max_len", _hi)),
-        "caption_style": request.form.get("caption_style", "hormozi"),
-        "caption_pos": request.form.get("caption_pos", "middle"),
-        "auto_zoom": request.form.get("auto_zoom", "on") == "on",
-        "face_track": request.form.get("face_track", "on") == "on",
-        "speech_lang": request.form.get("speech_lang", "en"),
-    }
-    # server default keys fallback
-    if not cfg["groq_key"]:
-        cfg["groq_key"] = os.environ.get("GROQ_KEY", "")
-    if not cfg["openai_key"]:
-        cfg["openai_key"] = os.environ.get("OPENAI_KEY", "")
     jids = []
+    for sp in staged:
+        fn = os.path.basename(sp).split("_", 1)[-1]
+        jid = _new_job(fn, "upload", cfg=dict(cfg, source_name=fn))
+        vp = os.path.join(UPLOAD, jid + "_" + secure_filename(fn))
+        os.replace(sp, vp)
+        meta = _read_meta(jid)
+        meta["video_path"] = vp
+        _write_meta(jid, meta)
+        POOL.submit(job_worker, jid)
+        jids.append(jid)
     for f in files:
         fn = secure_filename(f.filename)
         jid = _new_job(fn, "upload", cfg=cfg)
