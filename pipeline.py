@@ -133,14 +133,15 @@ def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir):
         url = GROQ_BASE + "/chat/completions"
         model = "openai/gpt-oss-120b"
         key = api_key
+    payload = {"model": model, "temperature": 0.7,
+               "messages": [
+                   {"role": "system", "content": "You are a viral video editor. Output JSON only."},
+                   {"role": "user", "content": prompt}]}
+    if provider == "openai":
+        payload["response_format"] = {"type": "json_object"}
     r = requests.post(url, headers={"Authorization": "Bearer " + key,
                                     "Content-Type": "application/json"},
-                      json={"model": model, "temperature": 0.7,
-                            "response_format": {"type": "json_object"},
-                            "messages": [
-                                {"role": "system", "content": "You are a viral video editor. Output JSON only."},
-                                {"role": "user", "content": prompt}]},
-                      timeout=300)
+                      json=payload, timeout=300)
     try:
         j = r.json()
         txt = j["choices"][0]["message"]["content"]
