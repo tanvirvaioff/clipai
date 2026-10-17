@@ -1,0 +1,114 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipAI — Turn Any Video Into Viral Shorts</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0f;--bg2:#121218;--card:#16161e;--card2:#1c1c26;--border:#262633;
+--txt:#f1f1f4;--mut:#9a9ab0;--acc:#7c3aed;--white:#ffffff}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh;display:flex}
+/* left icon sidebar */
+.side{width:64px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;position:sticky;top:0;height:100vh;background:var(--bg)}
+.side a{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--mut);font-size:19px;text-decoration:none;transition:.15s}
+.side a:hover,.side a.on{background:var(--card2);color:var(--txt)}
+.side .sp{flex:1}
+.main{flex:1;min-width:0;padding:34px 28px 80px;max-width:1060px;margin:0 auto;width:100%}
+.toprow{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:46px}
+.pillbtn{border:1px solid var(--border);background:var(--card);color:var(--txt);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
+.pillbtn:hover{border-color:var(--acc)}
+/* link input pill */
+.linkbar{display:flex;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:40px;padding:8px 8px 8px 22px;max-width:640px;margin:0 auto;gap:10px;transition:.2s}
+.linkbar:focus-within{border-color:var(--acc)}
+.linkbar .lk{color:var(--mut);font-size:16px}
+.linkbar input{flex:1;background:transparent;border:0;outline:0;color:var(--txt);font-size:15px;min-width:0}
+.linkbar input::placeholder{color:var(--mut)}
+.gobtn{background:var(--white);color:#111;border:0;border-radius:30px;padding:13px 28px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.15s}
+.gobtn:hover{transform:scale(1.03)}
+.srctabs{display:flex;justify-content:center;gap:22px;margin:18px 0 8px;font-size:13px;color:var(--mut)}
+.srctabs button{background:none;border:0;color:var(--mut);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 4px}
+.srctabs button:hover{color:var(--txt)}
+.srctabs .u{color:var(--acc)}
+#file{display:none}
+.hintline{text-align:center;color:var(--mut);font-size:13px;margin-bottom:26px;min-height:20px}
+/* feature pills */
+.feats{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:60px;max-width:820px;margin-left:auto;margin-right:auto}
+.feat{border:1px solid var(--border);background:var(--card);color:var(--txt);border-radius:24px;padding:10px 18px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;cursor:default;position:relative}
+.feat .beta{font-size:9px;background:var(--acc);color:#fff;border-radius:8px;padding:2px 6px;font-weight:700}
+.feat .dot{position:absolute;top:8px;right:10px;width:7px;height:7px;border-radius:50%;background:#ef4444}
+h2.sec{font-size:16px;font-weight:700;margin:0 0 18px;color:var(--txt)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.dcard{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;cursor:pointer;transition:.2s}
+.dcard:hover{transform:translateY(-3px);border-color:var(--acc)}
+.dcard .th{aspect-ratio:16/9;background:linear-gradient(135deg,#2b2b40,#16161e);display:flex;align-items:center;justify-content:center;font-size:40px;position:relative}
+.dcard .th .pl{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;font-size:20px;color:#111}
+.dcard .bd{padding:14px}
+.dcard .bd b{font-size:14px;display:block;line-height:1.4}
+.dcard .bd span{font-size:12px;color:var(--mut)}
+.learn{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;margin-top:18px}
+.lcard{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+.lcard .th{aspect-ratio:16/9;background:linear-gradient(135deg,#1e1b3a,#0a0a0f);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;text-align:center;padding:0 20px;line-height:1.4}
+@media(max-width:640px){.side{display:none}.linkbar{flex-direction:column;border-radius:24px;padding:14px}.gobtn{width:100%}}
+</style></head>
+<body>
+<nav class="side">
+<a href="/dashboard" class="on" title="Home">⌂</a>
+<a href="/jobs" title="My projects">▦</a>
+<a href="/jobs" title="Calendar">▤</a>
+<a href="/jobs" title="Analytics">◔</a>
+<div class="sp"></div>
+<a href="/jobs" title="Help">?</a>
+</nav>
+<div class="main">
+<div class="toprow">
+<a class="pillbtn" href="/jobs">📁 My Projects</a>
+</div>
+
+<form action="/workflow" method="post" enctype="multipart/form-data" id="f">
+<div class="linkbar">
+<span class="lk">🔗</span>
+<input type="text" name="youtube_url" id="yt" placeholder="Drop a YouTube link" autocomplete="off">
+<button class="gobtn" type="submit">Get clips in 1 click</button>
+</div>
+<div class="srctabs">
+<button type="button" onclick="document.getElementById('file').click()"><span class="u">📁</span> Upload</button>
+<button type="button" onclick="alert('Google Drive coming soon — upload the file directly for now')">🔵 Google Drive</button>
+<button type="button" onclick="sample()">Try a sample project</button>
+</div>
+<input type="file" id="file" name="video" accept="video/*" onchange="if(this.files.length)this.form.submit()">
+<div class="hintline" id="hint"></div>
+</form>
+
+<div class="feats">
+<span class="feat">🎬 Long to shorts</span>
+<span class="feat">✂️ Edit video</span>
+<span class="feat">💬 AI Captions</span>
+<span class="feat">🤖 AI B-roll <span class="dot"></span></span>
+<span class="feat">🖼️ AI Reframe</span>
+<span class="feat">🔊 Auto SFX <span class="dot"></span></span>
+<span class="feat">⬆️ Upscale <span class="dot"></span></span>
+<span class="feat">🗣️ Voice dubbing <span class="dot"></span></span>
+<span class="feat">🎙️ Enhance speech</span>
+</div>
+
+<h2 class="sec">Start from a demo project</h2>
+<div class="cards">
+<div class="dcard" onclick="sample()"><div class="th">🎙️<span class="pl">▶</span></div><div class="bd"><b>Podcast Highlights — Tech Talk #42</b><span>18 clips</span></div></div>
+<div class="dcard" onclick="sample()"><div class="th">🏀<span class="pl">▶</span></div><div class="bd"><b>Game Analysis — Top Plays</b><span>12 clips</span></div></div>
+<div class="dcard" onclick="sample()"><div class="th">🎸<span class="pl">▶</span></div><div class="bd"><b>Music Interview #408</b><span>25 clips</span></div></div>
+</div>
+
+<h2 class="sec" style="margin-top:44px">Master ClipAI</h2>
+<div class="learn">
+<div class="lcard"><div class="th">Turn Any Video<br>Into Viral Shorts</div></div>
+<div class="lcard"><div class="th">5 Top Features<br>You Didn't Know</div></div>
+<div class="lcard"><div class="th">Make 40<br>YouTube Shorts</div></div>
+<div class="lcard"><div class="th">Edit Faster with<br>Keyboard</div></div>
+</div>
+</div>
+<script>
+document.getElementById('f').addEventListener('submit',ev=>{
+  const yt=document.getElementById('yt').value.trim();
+  if(!yt){ev.preventDefault();document.getElementById('hint').textContent='Paste a YouTube link above, or click Upload to choose a file';}
+  else{document.getElementById('hint').textContent='⏳ Loading video…';}
+});
+function sample(){document.getElementById('hint').textContent='Upload your own video to get started — samples coming soon';}
+</script></body></html>
