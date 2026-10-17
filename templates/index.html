@@ -46,6 +46,7 @@ button.go:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,58,237
 </style></head>
 <body><div class="wrap">
 <div class="logo">✂️ ClipAI</div>
+<div style="text-align:right;margin-bottom:6px"><a href="/jobs" style="color:var(--acc2);font-size:14px;text-decoration:none">📋 My Jobs →</a></div>
 <h1>Turn long videos into <span class="grad">viral shorts</span></h1>
 <p class="sub">AI finds the best moments, tracks faces, adds animated captions.</p>
 <form action="/start" method="post" enctype="multipart/form-data" id="f">
@@ -56,11 +57,11 @@ button.go:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,58,237
 </div>
 <div id="drop" onclick="document.getElementById('file').click()">
 <div class="big">🎬</div>
-<p><b>Drag & drop</b> your video here or <b style="color:var(--acc2)">browse</b><br>MP4, MOV, WebM — up to 2GB</p>
+<p><b>Drag & drop</b> your videos here or <b style="color:var(--acc2)">browse</b><br>MP4, MOV, WebM — up to 2GB each, <b>multiple files OK</b></p>
 <div class="fname" id="fname"></div>
 </div>
-<input type="file" id="file" name="video" accept="video/*" onchange="picked(this)">
-<div id="ytbox"><input type="text" name="youtube_url" placeholder="https://youtube.com/watch?v=..."></div>
+<input type="file" id="file" name="video" accept="video/*" multiple onchange="picked(this)">
+<div id="ytbox"><textarea name="youtube_urls" rows="3" style="width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:14px;font-size:15px" placeholder="Paste YouTube URLs — one per line (bulk OK)&#10;https://youtube.com/watch?v=..."></textarea></div>
 
 <label class="lbl">AI Provider</label>
 <div class="seg">
@@ -77,6 +78,18 @@ button.go:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,58,237
 <label><input type="radio" name="caption_style" value="hormozi" checked><span class="sw" style="color:#ffd700">Aa</span><small>Hormozi</small></label>
 <label><input type="radio" name="caption_style" value="beast"><span class="sw" style="color:#ffff00;-webkit-text-stroke:1px #000">AA</span><small>Beast</small></label>
 <label><input type="radio" name="caption_style" value="minimal"><span class="sw" style="color:#fff;font-size:15px">aa</span><small>Minimal</small></label>
+</div>
+
+<label class="lbl">Caption position</label>
+<div class="seg">
+<label><input type="radio" name="caption_pos" value="top"><span>⬆️ Top</span></label>
+<label><input type="radio" name="caption_pos" value="middle" checked><span>⏺️ Middle</span></label>
+<label><input type="radio" name="caption_pos" value="bottom"><span>⬇️ Bottom</span></label>
+</div>
+
+<label class="lbl">Effects</label>
+<div class="seg">
+<label><input type="checkbox" name="auto_zoom" checked><span>🔍 Auto-zoom on emphasis</span></label>
 </div>
 
 <label class="lbl">Number of clips: <span class="rval" id="nv">3</span></label>
@@ -97,12 +110,12 @@ document.getElementById('tUp').classList.toggle('on',m=='up');
 document.getElementById('tYt').classList.toggle('on',m=='yt');
 document.getElementById('drop').style.display=m=='up'?'block':'none';
 document.getElementById('ytbox').style.display=m=='yt'?'block':'none';}
-function picked(i){const n=i.files[0]?i.files[0].name:'';const e=document.getElementById('fname');e.style.display=n?'block':'none';e.textContent='✅ '+n;}
+function picked(i){const fs=i.files;const e=document.getElementById('fname');e.style.display=fs.length?'block':'none';e.textContent='✅ '+fs.length+' file(s): '+Array.from(fs).map(f=>f.name).join(', ').slice(0,120);}
 const d=document.getElementById('drop');
 ['dragover','dragenter'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.add('over')}));
 ['dragleave','drop'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.remove('over')}));
 d.addEventListener('drop',ev=>{const f=ev.dataTransfer.files;if(f.length){document.getElementById('file').files=f;picked(document.getElementById('file'));}});
 document.getElementById('f').addEventListener('submit',ev=>{
-if(mode=='up'&&!document.getElementById('file').files.length){ev.preventDefault();alert('Please choose a video file');}
-if(mode=='yt'&&!document.querySelector('[name=youtube_url]').value.trim()){ev.preventDefault();alert('Please paste a YouTube URL');}});
+if(mode=='up'&&!document.getElementById('file').files.length){ev.preventDefault();alert('Please choose at least one video file');}
+if(mode=='yt'&&!document.querySelector('[name=youtube_urls]').value.trim()){ev.preventDefault();alert('Please paste at least one YouTube URL');}});
 </script></body></html>
