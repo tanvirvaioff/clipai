@@ -37,6 +37,21 @@ def _read_status(jid):
             pass
     return None
 
+def download_youtube(url, jd):
+    """Download video from YouTube URL with yt-dlp. Returns path or (None, err)."""
+    out_tmpl = os.path.join(jd, "yt_source.%(ext)s")
+    rc, so, se = pipeline.run_cmd([
+        "yt-dlp", "-f", "bv*[height<=1080]+ba/b[height<=1080]",
+        "--no-check-certificate", "--no-playlist",
+        "-o", out_tmpl, url], timeout=1800)
+    if rc != 0:
+        return None, "yt-dlp failed: %s" % se[-300:]
+    import glob
+    got = glob.glob(os.path.join(jd, "yt_source.*"))
+    if not got:
+        return None, "yt-dlp produced no file"
+    return got[0], None
+
 def job_worker(jid, video_path, cfg):
     jd = os.path.join(JOBS, jid)
     _write_status(jid, {"status": "running", "progress": "starting…"})
@@ -58,26 +73,36 @@ def index():
 
 @app.route("/start", methods=["POST"])
 def start():
+    youtube_url = request.form.get("youtube_url", "").strip()
     f = request.files.get("video")
-    if not f or not f.filename:
-        return "No video uploaded", 400
     jid = uuid.uuid4().hex[:12]
     jd = os.path.join(JOBS, jid)
     os.makedirs(jd, exist_ok=True)
-    fn = secure_filename(f.filename)
-    vp = os.path.join(UPLOAD, jid + "_" + fn)
-    f.save(vp)
+    if youtube_url:
+        pipeline.log(jd, "Downloading from YouTube…")
+        vp, err = download_youtube(youtube_url, jd)
+        if not vp:
+            return "YouTube download failed: %s" % err, 400
+    else:
+        if not f or not f.filename:
+            return "No video uploaded or YouTube URL given", 400
+        fn = secure_filename(f.filename)
+        vp = os.path.join(UPLOAD, jid + "_" + fn)
+        f.save(vp)
     cfg = {
-        "provider": request.form.get("provider", "groq"),
+        "provider": request.form.get("provider", "openai"),
         "groq_key": request.form.get("groq_key", "").strip(),
         "openai_key": request.form.get("openai_key", "").strip(),
         "n_clips": int(request.form.get("n_clips", 3)),
         "min_len": int(request.form.get("min_len", 20)),
         "max_len": int(request.form.get("max_len", 50)),
+        "caption_style": request.form.get("caption_style", "hormozi"),
     }
-    # server default groq key fallback
+    # server default keys fallback
     if not cfg["groq_key"]:
         cfg["groq_key"] = os.environ.get("GROQ_KEY", "")
+    if not cfg["openai_key"]:
+        cfg["openai_key"] = os.environ.get("OPENAI_KEY", "")
     th = threading.Thread(target=job_worker, args=(jid, vp, cfg), daemon=True)
     th.start()
     return redirect(url_for("job", jid=jid))
