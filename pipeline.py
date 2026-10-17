@@ -188,6 +188,7 @@ def snap_time(words, t, which):
 
 # ---------------- face tracking (YuNet) ----------------
 _YUNET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "yunet.onnx")
+_FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
 def face_track_x(video_path, start, end, vw, job_dir):
     """Return smoothed face-center x positions: list of (time, x)."""
@@ -303,7 +304,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir):
         ass = os.path.join(job_dir, "clip%d_p%d.ass" % (idx, ci))
         write_ass(job_dir, words, s + t, s + te, ass)
         ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
-        sub = "subtitles='%s':fontsdir='/usr/share/fonts'" % ass_esc
+        sub = "subtitles='%s':fontsdir='%s'" % (ass_esc, _FONTS)
         if is_portrait:
             vf = "scale=1080:1920,%s" % sub
         else:
