@@ -3,21 +3,22 @@
 <title>ClipAI — My Projects</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#f6f7f9;--card:#fff;--border:#e5e7eb;--txt:#111827;--mut:#6b7280;
---acc:#ff6b00;--acc-d:#e55e00;--green:#16a34a;--red:#dc2626;--yel:#b45309}
+:root{--bg:#0a0a0f;--card:#14141c;--card2:#1c1c26;--border:#262633;--txt:#f1f1f4;--mut:#9a9ab0;
+--acc:#7c3aed;--acc-d:#a78bfa;--green:#22c55e;--red:#ef4444;--yel:#b45309}
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh}
 .layout{display:flex;min-height:100vh}
-.side{width:210px;background:var(--card);border-right:1px solid var(--border);padding:18px 12px;position:sticky;top:0;height:100vh;flex-shrink:0}
-.side .logo{font-size:19px;font-weight:800;padding:4px 10px 16px}
-.side .logo span{color:var(--acc)}
-.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);text-decoration:none;font-size:14px;font-weight:500;margin-bottom:2px}
-.nav a:hover{background:#f1f2f4;color:var(--txt)}
-.nav a.on{background:var(--acc);color:#fff;font-weight:700}
-.nav .sec{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:14px 12px 6px}
+.side{width:64px;background:var(--bg);border-right:1px solid var(--border);padding:14px 0;position:sticky;top:0;height:100vh;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.side .logo{display:none}
+.nav{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.nav a{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--mut);text-decoration:none;font-size:19px}
+.nav a:hover{background:var(--card2);color:var(--txt)}
+.nav a.on{background:var(--card2);color:var(--txt)}
+.nav .sec{display:none}
+.nav a .nl{display:none}
 .main{flex:1;padding:28px;max-width:1000px}
 .greet{font-size:26px;font-weight:700;margin-bottom:4px}
 .gsub{color:var(--mut);font-size:14px;margin-bottom:22px}
-.newbtn{display:inline-block;background:linear-gradient(180deg,#ff7d1a,#f25c00);color:#fff;font-weight:700;font-size:15px;border-radius:12px;padding:13px 28px;text-decoration:none;box-shadow:0 4px 14px rgba(255,107,0,.3);margin-bottom:24px}
+.newbtn{display:inline-block;background:#fff;color:#111;font-weight:700;font-size:15px;border-radius:12px;padding:13px 28px;text-decoration:none;margin-bottom:24px}
 .newbtn:hover{transform:translateY(-1px)}
 h2.sec{font-size:16px;margin:6px 0 14px;color:var(--txt)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
@@ -27,7 +28,7 @@ h2.sec{font-size:16px;margin:6px 0 14px;color:var(--txt)}
 .card .meta{color:var(--mut);font-size:12px;margin-bottom:10px}
 .badge{font-size:11px;font-weight:700;border-radius:20px;padding:4px 12px;display:inline-block;margin-bottom:4px}
 .badge.queued{background:#fef3c7;color:var(--yel)}
-.badge.running{background:#fff1e6;color:var(--acc-d)}
+.badge.running{background:#2e1065;color:var(--acc-d)}
 .badge.done{background:#dcfce7;color:#15803d}
 .badge.error{background:#fee2e2;color:var(--red)}
 .bar{background:#eef0f2;border-radius:8px;height:10px;overflow:hidden;margin-top:8px}
