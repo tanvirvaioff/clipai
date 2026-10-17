@@ -47,6 +47,15 @@ def video_fps(path):
     except Exception:
         return 30.0
 
+def video_duration(path):
+    rc, out, _ = run_cmd(["ffprobe", "-v", "error",
+                          "-show_entries", "format=duration",
+                          "-of", "csv=p=0", path], timeout=60)
+    try:
+        return float(out.strip().split("\n")[0])
+    except Exception:
+        return 0.0
+
 # ---------------- transcription (Groq Whisper free / OpenAI Whisper paid) ----------------
 def transcribe(provider, api_key, video_path, job_dir, language="en"):
     log(job_dir, "Extracting audio…")
@@ -122,7 +131,8 @@ Transcript:
 {transcript}
 """
 
-def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir):
+def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir,
+                 extra_prompt="", genre="Auto"):
     # build compact transcript
     segs = []
     cur, cur_s = [], None
@@ -140,6 +150,14 @@ def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir):
     if len(transcript) > 12000:
         transcript = transcript[:12000]
     prompt = MOMENT_PROMPT.format(n=n_clips, lo=lo, hi=hi, transcript=transcript)
+    _extra = []
+    if genre and genre != "Auto":
+        _extra.append("Video genre: %s — prefer moments that fit this genre." % genre)
+    if extra_prompt and extra_prompt.strip():
+        _extra.append("The user specifically wants these moments included: %s. "
+                      "Prioritize segments matching this request." % extra_prompt.strip()[:300])
+    if _extra:
+        prompt = prompt.replace("Transcript:\n", "\n".join(_extra) + "\n\nTranscript:\n")
     log(job_dir, "AI finding viral moments (%s)…" % provider)
     if provider == "openai":
         url = OPENAI_BASE + "/chat/completions"
@@ -536,13 +554,18 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
         (idx + 1, s, e, moment["title"], vw, vh, is_portrait, style))
     base = "clip%d_%s" % (idx + 1, re.sub(r"\W+", "_", moment["title"])[:30])
     out = os.path.join(out_dir, base + ".mp4")
-    # single ASS + SRT for the whole clip
+    # single ASS + SRT for the whole clip ("none" = no burned captions)
     ass = os.path.join(job_dir, "clip%d.ass" % idx)
-    write_ass(job_dir, words, s, e, ass, style=style, pos=caption_pos)
+    no_cap = (style == "none")
+    if not no_cap:
+        write_ass(job_dir, words, s, e, ass, style=style, pos=caption_pos)
     srt_path = os.path.join(out_dir, base + ".srt")
     write_srt(words, s, e, srt_path)
-    ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
-    sub = "subtitles='%s':fontsdir='%s'" % (ass_esc, _FONTS)
+    if no_cap:
+        sub = ""
+    else:
+        ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
+        sub = "subtitles='%s':fontsdir='%s'" % (ass_esc, _FONTS)
     # auto-zoom: subtle 1.0 -> 1.08 push-in over the clip (Submagic-style)
     # zoompan needs oversized input, so prescale to 1296x2304 when zoom is on
     zfilter = ""
@@ -554,7 +577,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
         zfilter = (",zoompan=z='1+0.08*on/%d':x='iw/2-(iw/zoom/2)':"
                    "y='ih/2-(ih/zoom/2)':d=1:s=1080x1920" % frames)
     if is_portrait:
-        vf = "%s%s,%s" % (prescale, zfilter, sub)
+        vf = ",".join(p for p in ["%s%s" % (prescale, zfilter), sub] if p)
         rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
                               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                               "-c:a", "aac", "-b:a", "160k", out])
@@ -571,8 +594,10 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
                 cx = int(max(0, min(vw - cw, x - cw / 2)))
                 f.write("%.1f crop x %d;\n" % (tt, cx))
         init_cx = int(max(0, min(vw - cw, (track[0][1] if track else vw / 2) - cw / 2)))
-        vf = ("sendcmd=f='%s',crop=%d:%d:x=%d:y=0,%s%s,%s" %
-              (cmds.replace("'", r"'\''"), cw, vh, init_cx, prescale, zfilter, sub))
+        vf = ",".join(p for p in [
+            "sendcmd=f='%s'" % cmds.replace("'", r"'\''"),
+            "crop=%d:%d:x=%d:y=0" % (cw, vh, init_cx),
+            "%s%s" % (prescale, zfilter), sub] if p)
         rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
                               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                               "-c:a", "aac", "-b:a", "160k", out])
@@ -623,19 +648,50 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
     auto_zoom = cfg.get("auto_zoom", True)
     face_track = cfg.get("face_track", True)
     speech_lang = cfg.get("speech_lang", "en")
+    clip_mode = cfg.get("clip_mode", "ai")          # ai | manual ("Don't clip")
+    auto_headline = cfg.get("auto_headline", True)
+    moment_prompt = cfg.get("moment_prompt", "")
+    genre = cfg.get("genre", "Auto")
+    src_name = cfg.get("source_name", "video")
+    # processing timeframe [t0, t1] in seconds (None = whole video)
+    tf = cfg.get("timeframe")
     prog(5, "Analyzing content…", "Whisper AI is listening to your video…")
     ok, words = transcribe(provider, stt_key, video_path, job_dir, language=speech_lang)
     if not ok:
         return False, words
+    if tf:
+        try:
+            t0, t1 = float(tf[0]), float(tf[1])
+            words = [w for w in words if w["e"] > t0 and w["s"] < t1]
+            log(job_dir, "timeframe %.0f-%.0fs: %d words" % (t0, t1, len(words)))
+        except Exception:
+            t0, t1 = 0.0, 0.0
+    else:
+        t0, t1 = 0.0, 0.0
     prog(40, "Analysis complete", "%d words found" % len(words))
-    prog(42, "Finding viral moments…", "AI is scoring the best clips…")
-    ok, moments = find_moments(provider, llm_key, words, n_clips,
-                               cfg.get("min_len", 20), cfg.get("max_len", 50),
-                               job_dir)
-    if not ok:
-        return False, moments
-    if not moments:
-        return False, "no moments found"
+    if not words:
+        return False, "no speech found in timeframe"
+    if clip_mode == "manual":
+        # "Don't clip" — one clip covering the timeframe (or whole video)
+        vd = video_duration(video_path)
+        ms, me = (t0, t1 if t1 > t0 else (vd if vd > 0 else words[-1]["e"]))
+        moments = [{"start": round(ms, 2), "end": round(me, 2), "score": 100,
+                    "title": src_name[:60],
+                    "hook": "",
+                    "subs": {"hook": 25, "flow": 25, "value": 25, "trend": 25}}]
+        log(job_dir, "manual mode: full clip %.0f-%.0fs" % (ms, me))
+    else:
+        prog(42, "Finding viral moments…", "AI is scoring the best clips…")
+        ok, moments = find_moments(provider, llm_key, words, n_clips,
+                                   cfg.get("min_len", 20), cfg.get("max_len", 50),
+                                   job_dir, extra_prompt=moment_prompt, genre=genre)
+        if not ok:
+            return False, moments
+        if not moments:
+            return False, "no moments found"
+    if not auto_headline:
+        for i, mo in enumerate(moments):
+            mo["title"] = "Clip %d" % (i + 1)
     open(os.path.join(job_dir, "moments.json"), "w", encoding="utf-8").write(
         json.dumps(moments, ensure_ascii=False, indent=1))
     prog(55, "Viral moments found", "%d moments selected" % len(moments))
