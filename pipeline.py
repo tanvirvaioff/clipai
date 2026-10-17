@@ -647,12 +647,9 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
         except Exception:
             pass
         if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
-            log(job_dir, "clip %d subtitles failed, retry plain" % (idx + 1))
-            vf_plain = "crop=%d:%d:%d:0,scale=1080:1920" % (cw, vh, init_cx)
-            rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur),
-                                  "-vf", vf_plain,
-                                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                                  "-c:a", "aac", "-b:a", "160k", out])
+            log(job_dir, "clip %d subtitles FAILED: %s" % (idx + 1, err[-800:]))
+            # Don't silently retry without captions — fail loudly so we can fix it
+            return False, "caption render failed: %s" % err[-300:]
     if rc != 0 or not os.path.exists(out):
         log(job_dir, "clip render failed: %s" % err[-1500:])
         return False, "render failed"
