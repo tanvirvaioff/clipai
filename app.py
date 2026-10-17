@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """ClipAI — OpusClip-style AI clipping web app."""
 import os, json, uuid, threading, time
+from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, request, render_template, jsonify, send_from_directory, redirect, url_for
 from werkzeug.utils import secure_filename
 import pipeline
@@ -16,6 +17,8 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB
 
 JOBS_STATE = {}
+# bulk queue: max 2 videos processing at once (2 CPU cores)
+POOL = ThreadPoolExecutor(max_workers=2)
 
 def _status_path(jid):
     return os.path.join(JOBS, jid, "status.json")
@@ -52,14 +55,56 @@ def download_youtube(url, jd):
         return None, "yt-dlp produced no file"
     return got[0], None
 
-def job_worker(jid, video_path, cfg):
+def _meta_path(jid):
+    return os.path.join(JOBS, jid, "meta.json")
+
+def _write_meta(jid, meta):
+    try:
+        with open(_meta_path(jid), "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+def _read_meta(jid):
+    p = _meta_path(jid)
+    if os.path.exists(p):
+        try:
+            return json.load(open(p, encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+def _new_job(name, source, youtube_url=None, video_path=None, cfg=None):
+    jid = uuid.uuid4().hex[:12]
     jd = os.path.join(JOBS, jid)
+    os.makedirs(jd, exist_ok=True)
+    _write_meta(jid, {"name": name, "source": source, "youtube_url": youtube_url,
+                      "video_path": video_path, "cfg": cfg or {},
+                      "created": time.time()})
+    _write_status(jid, {"status": "queued", "progress": 0,
+                        "step": "Queued", "detail": "Waiting for a worker…"})
+    return jid
+
+def job_worker(jid):
+    """Bulk-queue worker: downloads (if YouTube) then runs the pipeline."""
+    jd = os.path.join(JOBS, jid)
+    meta = _read_meta(jid)
+    cfg = meta.get("cfg", {})
+    video_path = meta.get("video_path")
     _write_status(jid, {"status": "running", "progress": 0,
                         "step": "Starting", "detail": "Preparing…"})
     def _prog(pct, step, detail=""):
         _write_status(jid, {"status": "running", "progress": pct,
                             "step": step, "detail": detail})
     try:
+        if meta.get("youtube_url"):
+            _prog(2, "Downloading video…", "Fetching from YouTube…")
+            pipeline.log(jd, "Downloading from YouTube…")
+            video_path, err = download_youtube(meta["youtube_url"], jd)
+            if not video_path:
+                raise RuntimeError("YouTube download failed: %s" % err)
+        if not video_path or not os.path.exists(video_path):
+            raise RuntimeError("video file missing")
         ok, res = pipeline.run_job(jd, video_path, cfg, progress_cb=_prog)
         st = {"status": "done" if ok else "error",
               "result": res if ok else None,
@@ -77,22 +122,18 @@ def index():
 
 @app.route("/start", methods=["POST"])
 def start():
-    youtube_url = request.form.get("youtube_url", "").strip()
-    f = request.files.get("video")
-    jid = uuid.uuid4().hex[:12]
-    jd = os.path.join(JOBS, jid)
-    os.makedirs(jd, exist_ok=True)
-    if youtube_url:
-        pipeline.log(jd, "Downloading from YouTube…")
-        vp, err = download_youtube(youtube_url, jd)
-        if not vp:
-            return "YouTube download failed: %s" % err, 400
-    else:
-        if not f or not f.filename:
-            return "No video uploaded or YouTube URL given", 400
-        fn = secure_filename(f.filename)
-        vp = os.path.join(UPLOAD, jid + "_" + fn)
-        f.save(vp)
+    # BULK: multiple files + multiple YouTube URLs (one per line)
+    files = [f for f in request.files.getlist("video") if f and f.filename]
+    yt_urls = []
+    for u in request.form.get("youtube_urls", "").replace(",", "\n").splitlines():
+        u = u.strip()
+        if u and u not in yt_urls:
+            yt_urls.append(u)
+    single_yt = request.form.get("youtube_url", "").strip()
+    if single_yt and single_yt not in yt_urls:
+        yt_urls.insert(0, single_yt)
+    if not files and not yt_urls:
+        return "No videos uploaded or YouTube URLs given", 400
     cfg = {
         "provider": request.form.get("provider", "openai"),
         "groq_key": request.form.get("groq_key", "").strip(),
@@ -101,15 +142,91 @@ def start():
         "min_len": int(request.form.get("min_len", 20)),
         "max_len": int(request.form.get("max_len", 50)),
         "caption_style": request.form.get("caption_style", "hormozi"),
+        "caption_pos": request.form.get("caption_pos", "middle"),
+        "auto_zoom": request.form.get("auto_zoom", "on") == "on",
     }
     # server default keys fallback
     if not cfg["groq_key"]:
         cfg["groq_key"] = os.environ.get("GROQ_KEY", "")
     if not cfg["openai_key"]:
         cfg["openai_key"] = os.environ.get("OPENAI_KEY", "")
-    th = threading.Thread(target=job_worker, args=(jid, vp, cfg), daemon=True)
-    th.start()
-    return redirect(url_for("job", jid=jid))
+    jids = []
+    for f in files:
+        fn = secure_filename(f.filename)
+        jid = _new_job(fn, "upload", cfg=cfg)
+        vp = os.path.join(UPLOAD, jid + "_" + fn)
+        f.save(vp)
+        meta = _read_meta(jid)
+        meta["video_path"] = vp
+        _write_meta(jid, meta)
+        POOL.submit(job_worker, jid)
+        jids.append(jid)
+    for url in yt_urls:
+        jid = _new_job(url[:60], "youtube", youtube_url=url, cfg=cfg)
+        POOL.submit(job_worker, jid)
+        jids.append(jid)
+    if len(jids) == 1:
+        return redirect(url_for("job", jid=jids[0]))
+    return redirect(url_for("jobs"))
+
+@app.route("/jobs")
+def jobs():
+    """Bulk dashboard: all jobs with status."""
+    items = []
+    if os.path.isdir(JOBS):
+        for jid in os.listdir(JOBS):
+            jd = os.path.join(JOBS, jid)
+            if not os.path.isdir(jd):
+                continue
+            meta = _read_meta(jid)
+            st = _read_status(jid) or JOBS_STATE.get(jid, {"status": "unknown"})
+            nclips = 0
+            try:
+                res = st.get("result") or []
+                nclips = len(res)
+            except Exception:
+                pass
+            items.append({
+                "jid": jid,
+                "name": meta.get("name") or jid,
+                "source": meta.get("source") or "?",
+                "created": meta.get("created") or 0,
+                "status": st.get("status", "unknown"),
+                "progress": st.get("progress", 0),
+                "step": st.get("step", ""),
+                "nclips": nclips,
+                "error": st.get("error", ""),
+            })
+    items.sort(key=lambda x: -x["created"])
+    return render_template("jobs.html", jobs=items)
+
+@app.route("/api/jobs")
+def api_jobs():
+    items = []
+    if os.path.isdir(JOBS):
+        for jid in os.listdir(JOBS):
+            jd = os.path.join(JOBS, jid)
+            if not os.path.isdir(jd):
+                continue
+            meta = _read_meta(jid)
+            st = _read_status(jid) or JOBS_STATE.get(jid, {"status": "unknown"})
+            try:
+                nclips = len(st.get("result") or [])
+            except Exception:
+                nclips = 0
+            items.append({
+                "jid": jid,
+                "name": meta.get("name") or jid,
+                "source": meta.get("source") or "?",
+                "created": meta.get("created") or 0,
+                "status": st.get("status", "unknown"),
+                "progress": st.get("progress", 0),
+                "step": st.get("step", ""),
+                "nclips": nclips,
+                "error": st.get("error", ""),
+            })
+    items.sort(key=lambda x: -x["created"])
+    return jsonify({"jobs": items})
 
 @app.route("/job/<jid>")
 def job(jid):
