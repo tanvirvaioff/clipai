@@ -37,6 +37,16 @@ def video_size(path):
     except Exception:
         return 1920, 1080
 
+def video_fps(path):
+    rc, out, _ = run_cmd(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                          "-show_entries", "stream=r_frame_rate",
+                          "-of", "csv=p=0", path], timeout=60)
+    try:
+        num, den = out.strip().split("\n")[0].split("/")
+        return float(num) / float(den) if float(den) else 30.0
+    except Exception:
+        return 30.0
+
 # ---------------- transcription (Groq Whisper free / OpenAI Whisper paid) ----------------
 def transcribe(provider, api_key, video_path, job_dir):
     log(job_dir, "Extracting audio…")
@@ -100,7 +110,12 @@ Rules:
 - Each moment {lo}-{hi} seconds long, must be a complete thought (don't cut mid-sentence)
 - Rank by hook strength, emotion, surprise, relatability, shareability
 - Moments must not overlap
-- Respond ONLY with JSON: [{{"start": 12.5, "end": 47.0, "score": 95, "title": "short punchy title", "hook": "first line that grabs attention"}}]
+- For each moment give 4 sub-scores (0-25 each, MUST sum exactly to the total score):
+  - hook: does the intro grab attention in the first 3 seconds?
+  - flow: does it flow logically with a satisfying conclusion?
+  - value: does it offer value, resonate emotionally, create personal connection?
+  - trend: is it aligned with current trends and audience interests?
+- Respond ONLY with JSON: [{{"start": 12.5, "end": 47.0, "score": 95, "subs": {{"hook": 24, "flow": 23, "value": 25, "trend": 23}}, "title": "short punchy title", "hook": "first line that grabs attention"}}]
 
 Transcript:
 {transcript}
@@ -173,7 +188,8 @@ def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir):
         clean.append({"start": round(s, 2), "end": round(e, 2),
                       "score": int(mo.get("score", 80)),
                       "title": str(mo.get("title", "Clip"))[:60],
-                      "hook": str(mo.get("hook", ""))[:120]})
+                      "hook": str(mo.get("hook", ""))[:120],
+                      "subs": _parse_subs(mo)})
     clean.sort(key=lambda m: -m["score"])
     # de-overlap
     final = []
@@ -191,38 +207,104 @@ def snap_time(words, t, which):
             bd, best = abs(c - t), c
     return best
 
+def _parse_subs(mo):
+    """Parse hook/flow/value/trend sub-scores (0-25 each). Fall back to even split."""
+    score = int(mo.get("score", 80))
+    subs = mo.get("subs") or {}
+    out = {}
+    for k in ("hook", "flow", "value", "trend"):
+        try:
+            out[k] = max(0, min(25, int(subs.get(k, 0))))
+        except Exception:
+            out[k] = 0
+    if sum(out.values()) <= 0:
+        q, r = divmod(max(0, score), 4)
+        out = {"hook": q + (1 if r > 0 else 0), "flow": q + (1 if r > 1 else 0),
+               "value": q + (1 if r > 2 else 0), "trend": q}
+    return out
+
 # ---------------- face tracking (YuNet) ----------------
 _YUNET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "yunet.onnx")
 _FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
-def face_track_x(video_path, start, end, vw, job_dir, step=1.0):
-    """Return smoothed face-center x positions: list of (time, x)."""
+def face_track_x(video_path, start, end, vw, job_dir, step=0.5):
+    """Return smoothed face-center x positions: list of (time, x).
+
+    Fixes for erratic jumping:
+    - hysteresis: only switch to a NEW face region after it is the consistent
+      largest face for 2+ seconds (avoids flicker between people)
+    - no-face: KEEP last position (never jump to center/wide)
+    - largest face preferred (closest to camera = likely speaker)
+    - slew-rate limit: crop x interpolates, max ~0.8 frame-widths/sec
+    """
     detector = cv2.FaceDetectorYN_create(_YUNET, "", (320, 320))
     cap = cv2.VideoCapture(video_path)
-    pts = []
+    samples = []  # (t_rel, x or None)
     t = start
-    last_x = vw / 2
     while t < end:
         cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
         ok, frame = cap.read()
         if not ok:
+            samples.append((t - start, None))
             t += step
             continue
         h, w = frame.shape[:2]
         detector.setInputSize((w, h))
         _, faces = detector.detect(frame)
         if faces is not None and len(faces):
-            # largest face: [x, y, w, h, ...]
+            # largest face: [x, y, w, h, ...] — closest to camera = speaker
             f = max(faces, key=lambda b: b[2] * b[3])
-            last_x = float(f[0] + f[2] / 2) / w * vw
-        pts.append((t - start, last_x))
+            x = float(f[0] + f[2] / 2) / w * vw
+            samples.append((t - start, x))
+        else:
+            samples.append((t - start, None))
         t += step
     cap.release()
-    # smooth with moving average
+    if not samples:
+        return [(0.0, vw / 2)]
+
+    # Stage 1: hysteresis target selection
+    REGION = vw * 0.18          # same-face region radius
+    HYST_N = max(2, int(2.0 / step) + 1)  # 2+ full seconds of consistency to switch
+    target = samples[0][1] if samples[0][1] is not None else vw / 2
+    pending_x, pending_n = None, 0
+    targets = []
+    for t_rel, x in samples:
+        if x is None:
+            # NO FACE: keep last position, do NOT drift to center
+            pending_x, pending_n = None, 0
+            targets.append((t_rel, target))
+            continue
+        if abs(x - target) <= REGION:
+            # same face region: follow smoothly
+            target = 0.75 * target + 0.25 * x
+            pending_x, pending_n = None, 0
+        else:
+            # candidate new face: require consistency before switching
+            if pending_x is None or abs(x - pending_x) > REGION:
+                pending_x, pending_n = x, 1
+            else:
+                pending_n += 1
+                pending_x = 0.75 * pending_x + 0.25 * x
+            if pending_n >= HYST_N:
+                target = pending_x
+                pending_x, pending_n = None, 0
+        targets.append((t_rel, target))
+
+    # Stage 2: slew-rate limit (~0.8 widths/sec) + moving average
+    MAX_DX = vw * 0.8 * step
+    limited = []
+    prev = targets[0][1]
+    for t_rel, x in targets:
+        dx = x - prev
+        if abs(dx) > MAX_DX:
+            x = prev + math.copysign(MAX_DX, dx)
+        limited.append((t_rel, x))
+        prev = x
     sm = []
-    for i, (tt, x) in enumerate(pts):
-        win = pts[max(0, i - 2):i + 3]
-        sm.append((tt, sum(p[1] for p in win) / len(win)))
+    for i, (t_rel, x) in enumerate(limited):
+        win = limited[max(0, i - 2):i + 3]
+        sm.append((t_rel, sum(p[1] for p in win) / len(win)))
     return sm
 
 # ---------------- word-highlight captions (ASS) ----------------
@@ -230,11 +312,48 @@ def _ass_safe(t):
     """Escape ASS special chars in transcribed words."""
     return t.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
 
-def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30):
-    """Caption styles: hormozi (gold karaoke), beast (big yellow caps), minimal (small white)."""
+# words that get OpusClip-style keyword highlight (green)
+_KEYWORDS = {
+    "money", "cash", "rich", "million", "billion", "dollar", "dollars", "profit",
+    "profits", "free", "secret", "secrets", "amazing", "insane", "crazy", "viral",
+    "hack", "hacks", "trick", "tricks", "tip", "tips", "never", "always", "stop",
+    "warning", "shocking", "shocked", "exposed", "truth", "lies", "lie", "win",
+    "winner", "lose", "loser", "fail", "failed", "success", "successful", "love",
+    "hate", "best", "worst", "new", "proven", "guaranteed", "guarantee", "easy",
+    "fast", "quick", "now", "today", "limited", "exclusive", "ultimate",
+    "perfect", "wrong", "right", "why", "how", "wow", "omg", "unbelievable",
+    "millionaire", "broke", "debt", "invest", "investing", "crypto", "stock",
+    "business", "mistake", "mistakes", "lesson", "lessons", "fear", "scared",
+    "dangerous", "killer", "dead", "death", "kill", "fight", "war", "police",
+    "arrest", "caught", "busted", "scam", "fake", "real",
+}
+
+def _is_keyword(word):
+    """OpusClip-style keyword highlight heuristic."""
+    raw = word.strip()
+    if not raw:
+        return False
+    t = raw.lower().strip(".,!?;:'\"()[]-")
+    if not t:
+        return False
+    if t in _KEYWORDS:
+        return True
+    if len(raw) >= 3 and raw.isupper():
+        return True  # ALL CAPS emphasis in original speech
+    if len(t) > 6 and t.isalpha():
+        return True  # long significant words
+    return False
+
+def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
+              pos="middle"):
+    """Caption styles: hormozi (gold karaoke), beast (big yellow caps), minimal (small white).
+    pos: top / middle / bottom caption placement."""
+    # caption placement: (ASS alignment, MarginV)
+    _POS = {"top": (8, 150), "middle": (5, 30), "bottom": (2, 300)}
+    align, marginv = _POS.get(pos, _POS["middle"])
     segs = [w for w in words if w["e"] > start and w["s"] < end]
     lines, cur = [], []
-    per_line = 4 if style == "hormozi" else (3 if style == "beast" else 6)
+    per_line = 3 if style == "hormozi" else (3 if style == "beast" else 6)
     chars = max_chars if style == "hormozi" else (24 if style == "beast" else 42)
     for i, w in enumerate(segs):
         cur.append(w)
@@ -251,28 +370,30 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30):
         return "%d:%02d:%05.2f" % (int(t // 3600), int(t % 3600 // 60), t % 60)
     if style == "beast":
         # big yellow all-caps, thick black outline
-        st = ("Style: Cap,DejaVu Sans,88,&H0000FFFF,&H000000FF,&H00000000,&H00000000,"
-              "-1,0,0,0,100,100,0,0,1,6,0,2,10,10,120,1")
+        st = ("Style: Cap,Montserrat Black,96,&H0000FFFF,&H000000FF,&H00000000,&H00000000,"
+              "-1,0,0,0,100,100,0,0,1,6,0,%d,10,10,%d,1" % (align, marginv))
         body = lambda ln: _ass_safe(" ".join(c["w"] for c in ln).upper())
         hl = False
     elif style == "minimal":
-        # small white bottom, no highlight
-        st = ("Style: Cap,DejaVu Sans,48,&H00FFFFFF,&H000000FF,&H90000000,&H00000000,"
-              "-1,0,0,0,100,100,0,0,1,3,0,2,10,10,60,1")
+        # small white, no highlight
+        st = ("Style: Cap,DejaVu Sans,56,&H00FFFFFF,&H000000FF,&H90000000,&H00000000,"
+              "-1,0,0,0,100,100,0,0,1,3,0,%d,10,10,%d,1" % (align, marginv))
         body = lambda ln: _ass_safe(" ".join(c["w"] for c in ln))
         hl = False
     else:
-        # hormozi: karaoke gold highlight
-        st = ("Style: Cap,DejaVu Sans,72,&H00FFFFFF,&H000000FF,&H90000000,&H00000000,"
-              "-1,0,0,0,100,100,0,0,1,4,0.5,2,10,10,140,1")
+        # hormozi: Montserrat Black, ALL CAPS, white base, yellow tracker,
+        # green keyword highlight (OpusClip dual-color), 8px outline
+        st = ("Style: Cap,Montserrat Black,96,&H00FFFFFF&,&H003DD9FF&,&H00000000&,&H80000000&,"
+              "-1,0,0,0,100,100,0,0,1,8,0,%d,10,10,%d,1" % (align, marginv))
         hl = True
     out = ["[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920",
            "WrapStyle: 2", "", "[V4+ Styles]",
            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
            st, "", "[Events]",
            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
-    GOLD = r"{\c&H00D7FF&}"
-    WHITE = r"{\c&H00FFFFFF&}"
+    YELLOW = r"{\c&H003DD9FF&}"   # tracker: currently-spoken word (#FFD93D)
+    GREEN = r"{\c&H0014FF39&}"    # keyword highlight (#39FF14)
+    WHITE = r"{\c&H00FFFFFF&}"    # base
     for ln in lines:
         if not ln:
             continue
@@ -281,8 +402,14 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30):
                 wend = ln[wi + 1]["s"] if wi + 1 < len(ln) else w["e"] + 0.25
                 parts = []
                 for ci, c in enumerate(ln):
-                    col = GOLD if ci == wi else WHITE
-                    parts.append("%s%s" % (col, _ass_safe(c["w"])))
+                    cw = _ass_safe(c["w"]).upper()
+                    if ci == wi:
+                        col = YELLOW
+                    elif _is_keyword(c["w"]):
+                        col = GREEN
+                    else:
+                        col = WHITE
+                    parts.append("%s%s" % (col, cw))
                 out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,%s" %
                            (ts(w["s"]), ts(min(wend, ln[-1]["e"] + 0.3)), " ".join(parts)))
         else:
@@ -338,7 +465,8 @@ def detect_silences(video_path, start, end, job_dir, thresh_db=-40, min_dur=0.8)
             ", ".join("%.1f-%.1fs" % p for p in sils))
     return sils
 
-def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi"):
+def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi",
+                auto_zoom=True, caption_pos="middle"):
     s, e = moment["start"], moment["end"]
     dur = e - s
     if dur <= 0:
@@ -378,13 +506,23 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
     out = os.path.join(out_dir, base + ".mp4")
     # single ASS + SRT for the whole clip
     ass = os.path.join(job_dir, "clip%d.ass" % idx)
-    write_ass(job_dir, words, s, e, ass, style=style)
+    write_ass(job_dir, words, s, e, ass, style=style, pos=caption_pos)
     srt_path = os.path.join(out_dir, base + ".srt")
     write_srt(words, s, e, srt_path)
     ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
     sub = "subtitles='%s':fontsdir='%s'" % (ass_esc, _FONTS)
+    # auto-zoom: subtle 1.0 -> 1.08 push-in over the clip (Submagic-style)
+    # zoompan needs oversized input, so prescale to 1296x2304 when zoom is on
+    zfilter = ""
+    prescale = "scale=1080:1920"
+    if auto_zoom:
+        fps = video_fps(video_path)
+        frames = max(1, int(dur * fps))
+        prescale = "scale=1296:2304"
+        zfilter = (",zoompan=z='1+0.08*on/%d':x='iw/2-(iw/zoom/2)':"
+                   "y='ih/2-(ih/zoom/2)':d=1:s=1080x1920" % frames)
     if is_portrait:
-        vf = "scale=1080:1920,%s" % sub
+        vf = "%s%s,%s" % (prescale, zfilter, sub)
         rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
                               "-i", video_path, "-vf", vf,
                               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
@@ -398,8 +536,8 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
                 cx = int(max(0, min(vw - cw, x - cw / 2)))
                 f.write("%.1f crop x %d;\n" % (tt, cx))
         init_cx = int(max(0, min(vw - cw, (track[0][1] if track else vw / 2) - cw / 2)))
-        vf = ("sendcmd=f='%s',crop=%d:%d:x=%d:y=0,scale=1080:1920,%s" %
-              (cmds.replace("'", r"'\''"), cw, vh, init_cx, sub))
+        vf = ("sendcmd=f='%s',crop=%d:%d:x=%d:y=0,%s%s,%s" %
+              (cmds.replace("'", r"'\''"), cw, vh, init_cx, prescale, zfilter, sub))
         rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
                               "-i", video_path, "-vf", vf,
                               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
@@ -447,12 +585,14 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
     if not llm_key:
         return False, "API key missing"
     n_clips = cfg.get("n_clips", 3)
-    prog(5, "Transcribing audio", "Whisper AI is listening to your video…")
+    caption_pos = cfg.get("caption_pos", "middle")
+    auto_zoom = cfg.get("auto_zoom", True)
+    prog(5, "Analyzing content…", "Whisper AI is listening to your video…")
     ok, words = transcribe(provider, stt_key, video_path, job_dir)
     if not ok:
         return False, words
-    prog(40, "Transcription done", "%d words found" % len(words))
-    prog(42, "Finding viral moments", "AI is analyzing the best clips…")
+    prog(40, "Analysis complete", "%d words found" % len(words))
+    prog(42, "Finding viral moments…", "AI is scoring the best clips…")
     ok, moments = find_moments(provider, llm_key, words, n_clips,
                                cfg.get("min_len", 20), cfg.get("max_len", 50),
                                job_dir)
@@ -462,7 +602,8 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
         return False, "no moments found"
     open(os.path.join(job_dir, "moments.json"), "w", encoding="utf-8").write(
         json.dumps(moments, ensure_ascii=False, indent=1))
-    prog(55, "Moments found", "%d viral moments selected" % len(moments))
+    prog(55, "Viral moments found", "%d moments selected" % len(moments))
+    prog(57, "Adding captions…", "Writing animated captions for %d clips…" % len(moments))
     done = []
     style = cfg.get("caption_style", "hormozi")
     total = len(moments)
@@ -470,17 +611,21 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
     _completed = [0]
     def _render_one(arg):
         i, mo = arg
-        pct = 55 + int(40 * i / max(total, 1))
-        prog(pct, "Rendering clip %d of %d" % (i + 1, total),
-             '"%s" — face tracking + captions…' % mo.get("title", "")[:40])
-        ok, out = render_clip(video_path, words, mo, i, job_dir, out_dir, style=style)
+        pct = 58 + int(37 * i / max(total, 1))
+        prog(pct, "Reframing video…",
+             'Clip %d of %d "%s" — face tracking + captions…'
+             % (i + 1, total, mo.get("title", "")[:40]))
+        ok, out = render_clip(video_path, words, mo, i, job_dir, out_dir,
+                              style=style, auto_zoom=auto_zoom,
+                              caption_pos=caption_pos)
         _completed[0] += 1
         if ok:
             base = os.path.splitext(os.path.basename(out))[0]
-            prog(55 + int(40 * _completed[0] / max(total, 1)),
+            prog(58 + int(37 * _completed[0] / max(total, 1)),
                  "Clip %d of %d done" % (_completed[0], total), "✓")
             return {"file": os.path.basename(out), "title": mo["title"],
-                    "score": mo["score"], "start": mo["start"], "end": mo["end"],
+                    "score": mo["score"], "subs": mo.get("subs", {}),
+                    "start": mo["start"], "end": mo["end"],
                     "srt": base + ".srt"}
         else:
             log(job_dir, "clip %d failed: %s" % (i + 1, out))
@@ -493,7 +638,7 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
     done.sort(key=lambda d: -d["score"])
     open(os.path.join(job_dir, "done.json"), "w", encoding="utf-8").write(
         json.dumps(done, ensure_ascii=False, indent=1))
-    prog(98, "Finishing up", "Preparing your clips…")
+    prog(98, "Finalizing…", "Preparing your clips…")
     log(job_dir, "DONE: %d clips" % len(done))
     prog(100, "Done", "%d clips ready 🎉" % len(done))
     return True, done
