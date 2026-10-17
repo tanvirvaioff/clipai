@@ -158,12 +158,12 @@ def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir):
             s, e = float(mo["start"]), float(mo["end"])
         except Exception:
             continue
-        if e - s < lo * 0.7 or s < 0 or e > dur + 1:
+        if e <= s or e - s < lo * 0.7 or s < 0 or e > dur + 1:
             continue
         # snap to word boundaries
         s = snap_time(words, s, "s")
         e = snap_time(words, e, "e")
-        if e - s < 5:
+        if e <= s or e - s < 5:
             continue
         clean.append({"start": round(s, 2), "end": round(e, 2),
                       "score": int(mo.get("score", 80)),
@@ -268,6 +268,9 @@ def write_ass(job_dir, words, start, end, path, max_chars=30):
 def render_clip(video_path, words, moment, idx, job_dir, out_dir):
     s, e = moment["start"], moment["end"]
     dur = e - s
+    if dur <= 0:
+        log(job_dir, "Clip %d: invalid time range %.1f-%.1f, skipping" % (idx + 1, s, e))
+        return False, "invalid time range"
     vw, vh = video_size(video_path)
     if vw <= 0 or vh <= 0:
         log(job_dir, "Clip %d: bad video size %dx%d" % (idx + 1, vw, vh))
