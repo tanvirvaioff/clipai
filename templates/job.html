@@ -3,53 +3,65 @@
 <title>ClipAI — Processing</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#f6f7f9;--card:#fff;--border:#e5e7eb;--txt:#111827;--mut:#6b7280;
---acc:#ff6b00;--acc-d:#e55e00;--green:#16a34a;--red:#dc2626}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh}
-.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
-.topbar .logo{font-size:20px;font-weight:800}.topbar .logo span{color:var(--acc)}
-.topbar a{color:var(--acc);font-weight:600;font-size:14px;text-decoration:none}
-.wrap{max-width:900px;margin:28px auto;padding:0 16px 60px}
-h1{font-size:22px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+:root{--bg:#0a0a0f;--card:#14141c;--card2:#1c1c26;--border:#262633;--txt:#f1f1f4;--mut:#9a9ab0;--acc:#7c3aed;--green:#22c55e;--red:#ef4444}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh;display:flex}
+.side{width:64px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;position:sticky;top:0;height:100vh}
+.side a{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--mut);font-size:19px;text-decoration:none}
+.side a:hover{background:var(--card2);color:var(--txt)}
+.side .sp{flex:1}
+.main{flex:1;min-width:0;padding:30px 24px 80px;max-width:900px;margin:0 auto;width:100%}
+h1{font-size:20px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
 .badge{font-size:12px;font-weight:700;border-radius:20px;padding:5px 14px;background:var(--acc);color:#fff}
 .badge.done{background:var(--green)}.badge.err{background:var(--red)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
-#log{background:#f8f9fb;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;max-height:120px;overflow-y:auto;white-space:pre-wrap;color:var(--mut);line-height:1.5}
-.step-chip{font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;background:#f1f2f4;border:1px solid var(--border);color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:16px}
+.pbar .row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+#step{font-weight:700;font-size:15px}
+#pct{font-weight:800;font-size:18px;color:#a78bfa}
+.ptrack{background:#0d0d14;border:1px solid var(--border);border-radius:10px;height:14px;overflow:hidden}
+#bar{height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7,#ec4899);border-radius:10px;transition:width .5s}
+#detail{color:var(--mut);font-size:13px;margin-top:8px}
+#steps{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.step-chip{font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;background:var(--card2);border:1px solid var(--border);color:var(--mut)}
 .step-chip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-.step-chip.ok{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
+.step-chip.ok{background:#14532d;color:#86efac;border-color:#14532d}
+#log{background:#0d0d14;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;max-height:130px;overflow-y:auto;white-space:pre-wrap;color:#9fb3c8;line-height:1.5}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
-.clip{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.clip:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.12)}
+.clip{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;transition:.2s}
+.clip:hover{transform:translateY(-3px);border-color:var(--acc)}
 .clip .th{position:relative;background:#000;aspect-ratio:9/14;overflow:hidden}
 .clip video{width:100%;height:100%;object-fit:cover}
-.score{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#ff6b00,#ef4444);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:5px 12px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.score{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:5px 12px;box-shadow:0 2px 10px rgba(0,0,0,.5)}
 .score small{font-weight:600;opacity:.85;font-size:10px}
 .clip .bd{padding:14px}
 .clip .bd b{font-size:15px;display:block;margin-bottom:4px;line-height:1.3}
 .clip .bd .tm{color:var(--mut);font-size:12px;margin-bottom:10px}
 .btns{display:flex;gap:8px}
 .btns a{flex:1;text-align:center;border-radius:10px;padding:10px;font-size:14px;font-weight:700;text-decoration:none}
-.btns .mp4{background:linear-gradient(180deg,#ff7d1a,#f25c00);color:#fff;box-shadow:0 2px 8px rgba(255,107,0,.3)}
-.btns .srt{background:#f1f2f4;border:1px solid var(--border);color:var(--txt)}
+.btns .mp4{background:#fff;color:#111}
+.btns .srt{background:var(--card2);border:1px solid var(--border);color:var(--txt)}
 #empty{text-align:center;color:var(--mut);padding:30px;display:none}
 .spin{display:inline-block;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-.pbar{margin-bottom:14px}
-.pbar .row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-#step{font-weight:700;font-size:15px}
-#pct{font-weight:800;font-size:18px;color:var(--acc)}
-.ptrack{background:#eef0f2;border-radius:10px;height:14px;overflow:hidden}
-#bar{height:100%;width:0%;background:linear-gradient(90deg,#ff6b00,#ff9a3c);border-radius:10px;transition:width .5s}
-#detail{color:var(--mut);font-size:13px;margin-top:8px}
-#steps{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
 .subbar{flex:1}.subbar .sl{font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:2px}
-.subbar .st{background:#eef0f2;border-radius:4px;height:6px}.subbar .sf{height:100%;border-radius:4px;background:linear-gradient(90deg,#ff6b00,#ff9a3c)}
+.subbar .st{background:#0d0d14;border:1px solid var(--border);border-radius:4px;height:6px}.subbar .sf{height:100%;border-radius:4px;background:linear-gradient(90deg,#7c3aed,#a855f7)}
+/* OpusClip-style processing modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.mbox{background:var(--card2);border:1px solid var(--border);border-radius:18px;max-width:520px;width:100%;padding:28px;position:relative}
+.mbox h3{font-size:17px;margin-bottom:8px}
+.mbox .msub{color:var(--mut);font-size:13px;margin-bottom:18px;line-height:1.5}
+.mbox .x{position:absolute;top:12px;right:14px;background:none;border:0;color:var(--mut);font-size:16px;cursor:pointer}
+.minner{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;font-family:ui-monospace,monospace;font-size:13px;line-height:2}
+.minner .vt{color:#a78bfa;font-weight:700}
+.minner .gpct{color:var(--green);font-weight:700}
+.mclose{display:block;margin:18px 0 0 auto;background:#fff;color:#111;border:0;border-radius:10px;padding:9px 22px;font-weight:700;cursor:pointer}
+.hidden{display:none}
 </style></head>
 <body>
-<div class="topbar"><div class="logo">✂️ Clip<span style="color:var(--acc)">AI</span></div><a href="/jobs">📁 My Projects</a></div>
-<div class="wrap">
-<h1><span class="spin">⏳</span> <span id="ttl">Processing your video…</span> <span id="st" class="badge">running</span></h1>
+<nav class="side">
+<a href="/" title="Home">⌂</a><a href="/jobs" title="My projects">▦</a><a href="/jobs" title="Calendar">▤</a><a href="/jobs" title="Analytics">◔</a><div class="sp"></div><a href="/jobs" title="Help">?</a>
+</nav>
+<div class="main">
+<h1><span class="spin" id="spn">⏳</span> <span id="ttl">Processing your video…</span> <span id="st" class="badge">running</span></h1>
 <div class="card pbar">
 <div class="row1"><span id="step">Starting…</span><span id="pct">0%</span></div>
 <div class="ptrack"><div id="bar"></div></div>
@@ -60,9 +72,25 @@ h1{font-size:22px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
 <div id="empty">No clips yet — still working…</div>
 <div class="grid" id="clips"></div>
 </div>
+
+<div class="modal hidden" id="modal">
+<div class="mbox">
+<button class="x" onclick="document.getElementById('modal').classList.add('hidden')">✕</button>
+<h3>Your video is processing</h3>
+<div class="msub">You will receive a notification once your video is done processing, check back soon!</div>
+<div class="minner">
+<div class="vt" id="mTitle">Fetching video…</div><br>
+<div id="mMethod">Curation method: AI clipping…</div><br>
+<div id="mEta">Estimated waiting time: ~8min</div><br>
+<div class="gpct" id="mPct">Processing &amp; analyzing… 0%</div>
+</div>
+<button class="mclose" onclick="document.getElementById('modal').classList.add('hidden')">Close</button>
+</div>
+</div>
+
 <script>
 const jid = "{{ jid }}";
-let done = false;
+let done = false, modalShown = false;
 const STEPS = ["Analyzing content", "Finding moments", "Adding captions", "Reframing video", "Finalizing"];
 function col(s){return s>=90?'🔥':s>=80?'⚡':'✨'}
 function renderSteps(pct){
@@ -80,11 +108,16 @@ async function poll(){
   document.getElementById("step").textContent = j.step || "Working…";
   document.getElementById("detail").textContent = j.detail || "";
   renderSteps(pct);
+  // OpusClip-style modal
+  if(!modalShown && j.status === "running"){modalShown = true;
+    document.getElementById('modal').classList.remove('hidden');}
+  document.getElementById('mPct').textContent = "Processing & analyzing… " + pct + "%";
   const st = document.getElementById("st");
   if(j.status === "done" && !done){
     done = true; st.textContent = "done"; st.className = "badge done";
     document.getElementById("ttl").textContent = "Your clips are ready 🎉";
-    document.querySelector(".spin").style.display = "none";
+    document.getElementById("spn").style.display = "none";
+    document.getElementById('modal').classList.add('hidden');
     const box = document.getElementById("clips"); box.innerHTML = "";
     const res = j.result || [];
     document.getElementById("empty").style.display = res.length ? "none" : "block";
@@ -101,7 +134,8 @@ async function poll(){
   if(j.status === "error"){
     st.textContent = "error"; st.className = "badge err";
     document.getElementById("ttl").textContent = "Something went wrong";
-    document.querySelector(".spin").style.display = "none";
+    document.getElementById("spn").style.display = "none";
+    document.getElementById('modal').classList.add('hidden');
     lg.textContent += "\n\n❌ ERROR: " + (j.error || "unknown");
     return;
   }
