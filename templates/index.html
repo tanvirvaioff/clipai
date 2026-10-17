@@ -1,41 +1,108 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ClipAI — AI Video Clipping</title>
+<title>ClipAI — Turn Long Videos into Viral Shorts</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center;padding:40px 16px}
-.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:36px;max-width:620px;width:100%}
-h1{font-size:28px;margin-bottom:6px}h1 span{color:#2ea043}
-p.sub{color:#8b949e;margin-bottom:24px}
-label{display:block;color:#8b949e;font-size:13px;margin:16px 0 6px}
-input[type=text],input[type=file],select{width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;border-radius:8px;padding:12px;font-size:15px}
+:root{--bg:#0a0a0f;--card:#14141c;--border:#262633;--acc:#7c3aed;--acc2:#a855f7;--green:#22c55e;--txt:#f1f1f4;--mut:#9a9ab0}
+body{background:radial-gradient(1000px 500px at 50% -100px,#1e1b3a 0%,var(--bg) 60%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding:32px 16px}
+.wrap{max-width:720px;margin:0 auto}
+.logo{text-align:center;margin-bottom:8px;font-size:15px;color:var(--mut);letter-spacing:3px;text-transform:uppercase}
+h1{text-align:center;font-size:38px;font-weight:800;line-height:1.2;margin-bottom:10px}
+h1 .grad{background:linear-gradient(90deg,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
+p.sub{text-align:center;color:var(--mut);font-size:16px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:16px}
+.tabs{display:flex;gap:8px;margin-bottom:20px}
+.tabs button{flex:1;background:#1e1e2a;border:1px solid var(--border);color:var(--mut);border-radius:12px;padding:12px;font-size:15px;font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+#drop{border:2px dashed #3a3a4d;border-radius:16px;padding:44px 20px;text-align:center;cursor:pointer;transition:.2s}
+#drop:hover,#drop.over{border-color:var(--acc2);background:#1a1626}
+#drop .big{font-size:42px;margin-bottom:10px}
+#drop p{color:var(--mut);font-size:14px}
+#file{display:none}
+#ytbox{display:none}
+#ytbox input{width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:14px;font-size:15px}
+.fname{color:var(--green);font-size:14px;margin-top:10px;display:none}
+label.lbl{display:block;color:var(--mut);font-size:13px;font-weight:600;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.5px}
+.seg{display:flex;gap:8px}
+.seg label{flex:1;text-align:center;background:#0d0d14;border:1px solid var(--border);border-radius:12px;padding:13px;cursor:pointer;margin:0;font-size:14px}
+.seg input{display:none}
+.seg input:checked+span{color:var(--acc2);font-weight:700}
+.seg label:has(input:checked){border-color:var(--acc);background:#1c1530}
+.styles{display:flex;gap:8px}
+.styles label{flex:1;text-align:center;background:#0d0d14;border:1px solid var(--border);border-radius:12px;padding:10px;cursor:pointer;margin:0}
+.styles input{display:none}
+.styles label:has(input:checked){border-color:var(--acc);background:#1c1530}
+.styles .sw{font-size:20px;font-weight:800;display:block}
+.styles small{color:var(--mut);font-size:11px}
+input[type=text]{width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:13px;font-size:15px}
 .row{display:flex;gap:12px}.row>div{flex:1}
-button{background:#2ea043;color:#fff;border:0;border-radius:10px;padding:15px;font-size:17px;font-weight:700;width:100%;margin-top:26px;cursor:pointer}
-button:hover{background:#2c974b}
-.hint{font-size:12px;color:#6e7681;margin-top:6px}
-.seg{display:flex;gap:8px}.seg label{flex:1;text-align:center;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;cursor:pointer;margin:0}
-.seg input{display:none}.seg input:checked+span{font-weight:700;color:#2ea043}
+select{width:100%;background:#0d0d14;border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:13px;font-size:15px}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.rval{color:var(--acc2);font-weight:700}
+button.go{background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff;border:0;border-radius:14px;padding:17px;font-size:18px;font-weight:800;width:100%;margin-top:26px;cursor:pointer;transition:.2s}
+button.go:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,58,237,.4)}
+.feats{display:flex;gap:10px;justify-content:center;margin-top:22px;flex-wrap:wrap}
+.feats span{font-size:13px;color:var(--mut);background:#14141c;border:1px solid var(--border);border-radius:20px;padding:6px 14px}
 </style></head>
-<body><div class="card">
-<h1>✂️ Clip<span>AI</span></h1>
-<p class="sub">Upload a video — AI finds the viral moments and cuts vertical clips with animated captions.</p>
-<form action="/start" method="post" enctype="multipart/form-data">
-<label>Video file (mp4)</label>
-<input type="file" name="video" accept="video/*" required>
-<label>AI Provider</label>
+<body><div class="wrap">
+<div class="logo">✂️ ClipAI</div>
+<h1>Turn long videos into <span class="grad">viral shorts</span></h1>
+<p class="sub">AI finds the best moments, tracks faces, adds animated captions.</p>
+<form action="/start" method="post" enctype="multipart/form-data" id="f">
+<div class="card">
+<div class="tabs">
+<button type="button" id="tUp" class="on" onclick="tab('up')">📤 Upload video</button>
+<button type="button" id="tYt" onclick="tab('yt')">🔗 YouTube link</button>
+</div>
+<div id="drop" onclick="document.getElementById('file').click()">
+<div class="big">🎬</div>
+<p><b>Drag & drop</b> your video here or <b style="color:var(--acc2)">browse</b><br>MP4, MOV, WebM — up to 2GB</p>
+<div class="fname" id="fname"></div>
+</div>
+<input type="file" id="file" name="video" accept="video/*" onchange="picked(this)">
+<div id="ytbox"><input type="text" name="youtube_url" placeholder="https://youtube.com/watch?v=..."></div>
+
+<label class="lbl">AI Provider</label>
 <div class="seg">
-<label><input type="radio" name="provider" value="groq" checked><span>⚡ Groq — FREE</span></label>
-<label><input type="radio" name="provider" value="openai"><span>🧠 OpenAI — PAID (smarter)</span></label>
+<label><input type="radio" name="provider" value="openai" checked><span>🧠 OpenAI <small style="color:var(--green)">recommended</small></span></label>
+<label><input type="radio" name="provider" value="groq"><span>⚡ Groq <small>FREE</small></span></label>
 </div>
 <div class="row">
-<div><label>Groq API key</label><input type="text" name="groq_key" placeholder="gsk_... (or server default)"></div>
-<div><label>OpenAI API key</label><input type="text" name="openai_key" placeholder="sk-... (if OpenAI chosen)"></div>
+<div><label class="lbl">OpenAI key</label><input type="text" name="openai_key" placeholder="sk-... (or server default)"></div>
+<div><label class="lbl">Groq key</label><input type="text" name="groq_key" placeholder="gsk-... (if Groq)"></div>
 </div>
+
+<label class="lbl">Caption style</label>
+<div class="styles">
+<label><input type="radio" name="caption_style" value="hormozi" checked><span class="sw" style="color:#ffd700">Aa</span><small>Hormozi</small></label>
+<label><input type="radio" name="caption_style" value="beast"><span class="sw" style="color:#ffff00;-webkit-text-stroke:1px #000">AA</span><small>Beast</small></label>
+<label><input type="radio" name="caption_style" value="minimal"><span class="sw" style="color:#fff;font-size:15px">aa</span><small>Minimal</small></label>
+</div>
+
+<label class="lbl">Number of clips: <span class="rval" id="nv">3</span></label>
+<input type="range" name="n_clips" min="1" max="10" value="3" oninput="document.getElementById('nv').textContent=this.value">
 <div class="row">
-<div><label>Number of clips</label><select name="n_clips"><option>3</option><option>5</option><option>8</option><option>10</option></select></div>
-<div><label>Min length (sec)</label><select name="min_len"><option>15</option><option selected>20</option><option>30</option></select></div>
-<div><label>Max length (sec)</label><select name="max_len"><option>30</option><option>45</option><option selected>50</option><option>60</option></select></div>
+<div><label class="lbl">Min length</label><select name="min_len"><option value="15">15s</option><option value="20" selected>20s</option><option value="30">30s</option></select></div>
+<div><label class="lbl">Max length</label><select name="max_len"><option value="30">30s</option><option value="50" selected>50s</option><option value="60">60s</option></select></div>
 </div>
-<p class="hint">Face-tracked 9:16 crop • word-by-word karaoke captions • original audio</p>
-<button type="submit">🚀 Generate Clips</button>
-</form></div></body></html>
+<button class="go" type="submit">🚀 Generate Viral Clips</button>
+</div>
+</form>
+<div class="feats"><span>🎯 Face tracking</span><span>💬 Auto captions</span><span>📊 Virality score</span><span>🔇 Silence removal</span><span>📝 SRT export</span></div>
+</div>
+<script>
+let mode='up';
+function tab(m){mode=m;
+document.getElementById('tUp').classList.toggle('on',m=='up');
+document.getElementById('tYt').classList.toggle('on',m=='yt');
+document.getElementById('drop').style.display=m=='up'?'block':'none';
+document.getElementById('ytbox').style.display=m=='yt'?'block':'none';}
+function picked(i){const n=i.files[0]?i.files[0].name:'';const e=document.getElementById('fname');e.style.display=n?'block':'none';e.textContent='✅ '+n;}
+const d=document.getElementById('drop');
+['dragover','dragenter'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.add('over')}));
+['dragleave','drop'].forEach(e=>d.addEventListener(e,ev=>{ev.preventDefault();d.classList.remove('over')}));
+d.addEventListener('drop',ev=>{const f=ev.dataTransfer.files;if(f.length){document.getElementById('file').files=f;picked(document.getElementById('file'));}});
+document.getElementById('f').addEventListener('submit',ev=>{
+if(mode=='up'&&!document.getElementById('file').files.length){ev.preventDefault();alert('Please choose a video file');}
+if(mode=='yt'&&!document.querySelector('[name=youtube_url]').value.trim()){ev.preventDefault();alert('Please paste a YouTube URL');}});
+</script></body></html>
