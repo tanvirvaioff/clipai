@@ -114,18 +114,31 @@ def transcribe(provider, api_key, video_path, job_dir, language="en"):
     return True, words
 
 # ---------------- viral moments (Groq free or OpenAI paid) ----------------
-MOMENT_PROMPT = """You are a viral short-form video editor. Given a transcript with [start-end sec] segments, pick the {n} MOST VIRAL moments for TikTok/Reels/Shorts.
+MOMENT_PROMPT = """You are an elite viral short-form video editor who has created 100M+ view clips. Given a transcript with [start-end sec] segments, pick the {n} MOST VIRAL moments for TikTok/Reels/Shorts.
 
-Rules:
-- Each moment {lo}-{hi} seconds long, must be a complete thought (don't cut mid-sentence)
-- Rank by hook strength, emotion, surprise, relatability, shareability
-- Moments must not overlap
-- For each moment give 4 sub-scores (0-25 each, MUST sum exactly to the total score):
-  - hook: does the intro grab attention in the first 3 seconds?
-  - flow: does it flow logically with a satisfying conclusion?
-  - value: does it offer value, resonate emotionally, create personal connection?
-  - trend: is it aligned with current trends and audience interests?
-- Respond ONLY with JSON: [{{"start": 12.5, "end": 47.0, "score": 95, "subs": {{"hook": 24, "flow": 23, "value": 25, "trend": 23}}, "title": "short punchy title", "hook": "first line that grabs attention"}}]
+VIRALITY RULES (follow strictly):
+1. HOOK IS EVERYTHING: The first 1-3 seconds MUST have a pattern interrupt — a shocking statement, bold claim, unexpected question, or emotional peak. If the opening is boring, REJECT the moment.
+2. NO BUILDUP: Start AT the interesting part, not before. Cut all throat-clearing, "so basically", "um", introductions.
+3. EMOTIONAL SPIKES: Prioritize moments with strong emotion — anger, surprise, laughter, controversy, "no way" reactions, mic-drop statements.
+4. COMPLETE PAYOFF: Each clip must have a satisfying ending — a punchline, revelation, conclusion, or cliffhanger. Never end mid-thought.
+5. SHAREABILITY: Ask "would someone send this to a friend?" If no, reject.
+6. REWATCHABILITY: The best clips make people watch twice — dense with meaning, fast-paced, quotable lines.
+7. CONTROVERSY & HOT TAKES: Bold opinions, unpopular truths, myth-busting, "everyone is wrong about X" — these go viral.
+8. Each moment {lo}-{hi} seconds, must be a complete thought (don't cut mid-sentence)
+9. Moments must not overlap
+
+SCORING (be harsh — most content is NOT viral):
+- 95-100: Would get 1M+ views. Shocking hook, perfect payoff.
+- 85-94: Strong viral potential. Great hook, solid payoff.
+- 75-84: Good clip, might do well.
+- Below 75: DO NOT SELECT.
+
+For each moment give 4 sub-scores (0-25 each, MUST sum exactly to the total score):
+  - hook: does the first 3 seconds GRAB attention? (be strict)
+  - flow: tight pacing with satisfying payoff?
+  - value: emotional impact, quotability, shareability?
+  - trend: controversial/bold/relatable angle?
+- Respond ONLY with JSON: [{{"start": 12.5, "end": 47.0, "score": 95, "subs": {{"hook": 24, "flow": 23, "value": 25, "trend": 23}}, "title": "short punchy title (under 8 words, clickbait style)", "hook": "the exact opening line"}}]
 
 Transcript:
 {transcript}
