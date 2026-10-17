@@ -3,51 +3,60 @@
 <title>ClipAI — Processing</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0a0a0f;--card:#14141c;--border:#262633;--acc:#7c3aed;--acc2:#a855f7;--green:#22c55e;--red:#ef4444;--txt:#f1f1f4;--mut:#9a9ab0}
-body{background:radial-gradient(1000px 500px at 50% -100px,#1e1b3a 0%,var(--bg) 60%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 16px;min-height:100vh}
-.wrap{max-width:900px;margin:0 auto}
-h1{font-size:24px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
-.badge{font-size:13px;font-weight:700;border-radius:20px;padding:5px 16px;background:var(--acc)}
+:root{--bg:#f6f7f9;--card:#fff;--border:#e5e7eb;--txt:#111827;--mut:#6b7280;
+--acc:#ff6b00;--acc-d:#e55e00;--green:#16a34a;--red:#dc2626}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.topbar .logo{font-size:20px;font-weight:800}.topbar .logo span{color:var(--acc)}
+.topbar a{color:var(--acc);font-weight:600;font-size:14px;text-decoration:none}
+.wrap{max-width:900px;margin:28px auto;padding:0 16px 60px}
+h1{font-size:22px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.badge{font-size:12px;font-weight:700;border-radius:20px;padding:5px 14px;background:var(--acc);color:#fff}
 .badge.done{background:var(--green)}.badge.err{background:var(--red)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
-#log{background:#0d0d14;border:1px solid var(--border);border-radius:12px;padding:14px;font-family:ui-monospace,monospace;font-size:12.5px;height:240px;overflow-y:auto;white-space:pre-wrap;color:#9fb3c8;line-height:1.5}
-.step-chip{font-size:11px;padding:4px 10px;border-radius:20px;background:#1e1e2a;border:1px solid var(--border);color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+#log{background:#f8f9fb;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;max-height:120px;overflow-y:auto;white-space:pre-wrap;color:var(--mut);line-height:1.5}
+.step-chip{font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;background:#f1f2f4;border:1px solid var(--border);color:var(--mut)}
 .step-chip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-.step-chip.ok{background:#14532d;color:#86efac;border-color:#14532d}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
-.clip{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:.2s}
-.clip:hover{border-color:var(--acc);transform:translateY(-2px)}
+.step-chip.ok{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.clip{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.clip:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.12)}
 .clip .th{position:relative;background:#000;aspect-ratio:9/14;overflow:hidden}
 .clip video{width:100%;height:100%;object-fit:cover}
-.score{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:5px 12px;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+.score{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#ff6b00,#ef4444);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:5px 12px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
 .score small{font-weight:600;opacity:.85;font-size:10px}
 .clip .bd{padding:14px}
 .clip .bd b{font-size:15px;display:block;margin-bottom:4px;line-height:1.3}
-.clip .bd .tm{color:var(--mut);font-size:12px;margin-bottom:12px}
+.clip .bd .tm{color:var(--mut);font-size:12px;margin-bottom:10px}
 .btns{display:flex;gap:8px}
 .btns a{flex:1;text-align:center;border-radius:10px;padding:10px;font-size:14px;font-weight:700;text-decoration:none}
-.btns .mp4{background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff}
-.btns .srt{background:#1e1e2a;border:1px solid var(--border);color:var(--txt)}
+.btns .mp4{background:linear-gradient(180deg,#ff7d1a,#f25c00);color:#fff;box-shadow:0 2px 8px rgba(255,107,0,.3)}
+.btns .srt{background:#f1f2f4;border:1px solid var(--border);color:var(--txt)}
 #empty{text-align:center;color:var(--mut);padding:30px;display:none}
 .spin{display:inline-block;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+.pbar{margin-bottom:14px}
+.pbar .row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+#step{font-weight:700;font-size:15px}
+#pct{font-weight:800;font-size:18px;color:var(--acc)}
+.ptrack{background:#eef0f2;border-radius:10px;height:14px;overflow:hidden}
+#bar{height:100%;width:0%;background:linear-gradient(90deg,#ff6b00,#ff9a3c);border-radius:10px;transition:width .5s}
+#detail{color:var(--mut);font-size:13px;margin-top:8px}
+#steps{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.subbar{flex:1}.subbar .sl{font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:2px}
+.subbar .st{background:#eef0f2;border-radius:4px;height:6px}.subbar .sf{height:100%;border-radius:4px;background:linear-gradient(90deg,#ff6b00,#ff9a3c)}
 </style></head>
-<body><div class="wrap">
+<body>
+<div class="topbar"><div class="logo">✂️ Clip<span style="color:var(--acc)">AI</span></div><a href="/jobs">📁 My Projects</a></div>
+<div class="wrap">
 <h1><span class="spin">⏳</span> <span id="ttl">Processing your video…</span> <span id="st" class="badge">running</span></h1>
-<div class="card">
-<div style="margin-bottom:14px">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-<span id="step" style="font-weight:700;font-size:15px">Starting…</span>
-<span id="pct" style="font-weight:800;font-size:18px;color:var(--acc2)">0%</span>
+<div class="card pbar">
+<div class="row1"><span id="step">Starting…</span><span id="pct">0%</span></div>
+<div class="ptrack"><div id="bar"></div></div>
+<div id="detail"></div>
+<div id="steps"></div>
 </div>
-<div style="background:#0d0d14;border-radius:10px;height:14px;overflow:hidden;border:1px solid var(--border)">
-<div id="bar" style="height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7,#ec4899);border-radius:10px;transition:width .5s"></div>
-</div>
-<div id="detail" style="color:var(--mut);font-size:13px;margin-top:8px"></div>
-<div id="steps" style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"></div>
-</div>
-<div id="log" style="max-height:120px">starting…</div>
-</div>
+<div class="card"><div id="log">starting…</div></div>
 <div id="empty">No clips yet — still working…</div>
 <div class="grid" id="clips"></div>
 </div>
@@ -65,7 +74,6 @@ async function poll(){
   const r = await fetch("/api/job/"+jid); const j = await r.json();
   const lg = document.getElementById("log");
   lg.textContent = j.log || "starting…"; lg.scrollTop = 1e9;
-  // progress bar
   const pct = j.progress || 0;
   document.getElementById("bar").style.width = pct + "%";
   document.getElementById("pct").textContent = pct + "%";
@@ -84,7 +92,7 @@ async function poll(){
       const subs = c.subs || {};
       const subbar = ["hook","flow","value","trend"].map(k=>{
         const v = subs[k] || 0;
-        return `<div style="flex:1"><div style="font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:2px">${k} ${v}</div><div style="background:#0d0d14;border-radius:4px;height:6px"><div style="width:${v*4}%;height:100%;border-radius:4px;background:linear-gradient(90deg,#7c3aed,#a855f7)"></div></div></div>`;
+        return `<div class="subbar"><div class="sl">${k} ${v}</div><div class="st"><div class="sf" style="width:${v*4}%"></div></div></div>`;
       }).join("");
       box.innerHTML += `<div class="clip"><div class="th"><video src="/preview/${jid}/${c.file}" controls preload="metadata" playsinline></video><div class="score">${col(c.score)} ${c.score}<br><small>VIRAL</small></div></div><div class="bd"><b>${esc(c.title)}</b><div class="tm">${c.start.toFixed(0)}s – ${c.end.toFixed(0)}s • 9:16 • captions</div><div style="display:flex;gap:8px;margin-bottom:12px">${subbar}</div><div class="btns"><a class="mp4" href="/dl/${jid}/${c.file}">⬇ MP4</a><a class="srt" href="/dl/${jid}/${c.srt}">📝 SRT</a></div></div></div>`;
     });
