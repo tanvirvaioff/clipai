@@ -134,16 +134,21 @@ def start():
         yt_urls.insert(0, single_yt)
     if not files and not yt_urls:
         return "No videos uploaded or YouTube URLs given", 400
+    # clip duration presets → min/max length
+    _DUR = {"auto": (20, 50), "15-30": (15, 30), "30-60": (30, 60), "60-90": (60, 90)}
+    _lo, _hi = _DUR.get(request.form.get("clip_duration", "auto"), (20, 50))
     cfg = {
         "provider": request.form.get("provider", "openai"),
         "groq_key": request.form.get("groq_key", "").strip(),
         "openai_key": request.form.get("openai_key", "").strip(),
         "n_clips": int(request.form.get("n_clips", 3)),
-        "min_len": int(request.form.get("min_len", 20)),
-        "max_len": int(request.form.get("max_len", 50)),
+        "min_len": int(request.form.get("min_len", _lo)),
+        "max_len": int(request.form.get("max_len", _hi)),
         "caption_style": request.form.get("caption_style", "hormozi"),
         "caption_pos": request.form.get("caption_pos", "middle"),
         "auto_zoom": request.form.get("auto_zoom", "on") == "on",
+        "face_track": request.form.get("face_track", "on") == "on",
+        "speech_lang": request.form.get("speech_lang", "en"),
     }
     # server default keys fallback
     if not cfg["groq_key"]:
