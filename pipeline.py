@@ -387,7 +387,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
         vf = "scale=1080:1920,%s" % sub
         rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
                               "-i", video_path, "-vf", vf,
-                              "-c:v", "libx264", "-preset", "fast", "-crf", "19",
+                              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                               "-c:a", "aac", "-b:a", "160k", out])
     else:
         # smooth face-tracked crop in ONE pass via sendcmd (0.5s samples)
@@ -402,7 +402,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
               (cmds.replace("'", r"'\''"), cw, vh, init_cx, sub))
         rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
                               "-i", video_path, "-vf", vf,
-                              "-c:v", "libx264", "-preset", "fast", "-crf", "19",
+                              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                               "-c:a", "aac", "-b:a", "160k", out])
         try:
             os.remove(cmds)
@@ -413,7 +413,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
             vf_plain = "crop=%d:%d:%d:0,scale=1080:1920" % (cw, vh, init_cx)
             rc, _, err = run_cmd(["ffmpeg", "-y", "-ss", str(s), "-t", str(dur),
                                   "-i", video_path, "-vf", vf_plain,
-                                  "-c:v", "libx264", "-preset", "fast", "-crf", "19",
+                                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                                   "-c:a", "aac", "-b:a", "160k", out])
     if rc != 0 or not os.path.exists(out):
         log(job_dir, "clip render failed: %s" % err[-1500:])
@@ -425,11 +425,20 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
     return True, out
 
 # ---------------- full job ----------------
-def run_job(job_dir, video_path, cfg):
+def run_job(job_dir, video_path, cfg, progress_cb=None):
     os.makedirs(job_dir, exist_ok=True)
     out_dir = os.path.join(job_dir, "clips")
     os.makedirs(out_dir, exist_ok=True)
     open(os.path.join(job_dir, "log.txt"), "w").write("")
+
+    def prog(pct, step, detail=""):
+        if progress_cb:
+            try:
+                progress_cb(pct, step, detail)
+            except Exception:
+                pass
+        log(job_dir, "[%d%%] %s %s" % (pct, step, detail))
+
     provider = cfg.get("provider", "openai")
     groq_key = cfg.get("groq_key", "")
     openai_key = cfg.get("openai_key", "")
@@ -437,10 +446,14 @@ def run_job(job_dir, video_path, cfg):
     stt_key = openai_key if provider == "openai" else groq_key
     if not llm_key:
         return False, "API key missing"
+    n_clips = cfg.get("n_clips", 3)
+    prog(5, "Transcribing audio", "Whisper AI is listening to your video…")
     ok, words = transcribe(provider, stt_key, video_path, job_dir)
     if not ok:
         return False, words
-    ok, moments = find_moments(provider, llm_key, words, cfg.get("n_clips", 3),
+    prog(40, "Transcription done", "%d words found" % len(words))
+    prog(42, "Finding viral moments", "AI is analyzing the best clips…")
+    ok, moments = find_moments(provider, llm_key, words, n_clips,
                                cfg.get("min_len", 20), cfg.get("max_len", 50),
                                job_dir)
     if not ok:
@@ -449,18 +462,38 @@ def run_job(job_dir, video_path, cfg):
         return False, "no moments found"
     open(os.path.join(job_dir, "moments.json"), "w", encoding="utf-8").write(
         json.dumps(moments, ensure_ascii=False, indent=1))
+    prog(55, "Moments found", "%d viral moments selected" % len(moments))
     done = []
     style = cfg.get("caption_style", "hormozi")
-    for i, mo in enumerate(moments):
+    total = len(moments)
+    import concurrent.futures as _cf
+    _completed = [0]
+    def _render_one(arg):
+        i, mo = arg
+        pct = 55 + int(40 * i / max(total, 1))
+        prog(pct, "Rendering clip %d of %d" % (i + 1, total),
+             '"%s" — face tracking + captions…' % mo.get("title", "")[:40])
         ok, out = render_clip(video_path, words, mo, i, job_dir, out_dir, style=style)
+        _completed[0] += 1
         if ok:
             base = os.path.splitext(os.path.basename(out))[0]
-            done.append({"file": os.path.basename(out), "title": mo["title"],
-                         "score": mo["score"], "start": mo["start"], "end": mo["end"],
-                         "srt": base + ".srt"})
+            prog(55 + int(40 * _completed[0] / max(total, 1)),
+                 "Clip %d of %d done" % (_completed[0], total), "✓")
+            return {"file": os.path.basename(out), "title": mo["title"],
+                    "score": mo["score"], "start": mo["start"], "end": mo["end"],
+                    "srt": base + ".srt"}
         else:
             log(job_dir, "clip %d failed: %s" % (i + 1, out))
+            return None
+    # render 2 clips in parallel (2 CPU cores)
+    with _cf.ThreadPoolExecutor(max_workers=2) as _ex:
+        for _r in _ex.map(_render_one, list(enumerate(moments))):
+            if _r:
+                done.append(_r)
+    done.sort(key=lambda d: -d["score"])
     open(os.path.join(job_dir, "done.json"), "w", encoding="utf-8").write(
         json.dumps(done, ensure_ascii=False, indent=1))
+    prog(98, "Finishing up", "Preparing your clips…")
     log(job_dir, "DONE: %d clips" % len(done))
+    prog(100, "Done", "%d clips ready 🎉" % len(done))
     return True, done
