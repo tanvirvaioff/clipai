@@ -139,7 +139,11 @@ def job_worker(jid):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("landing.html")
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
 
 @app.route("/workflow", methods=["POST"])
 def workflow():
