@@ -3,3 +3,4 @@ requests==2.32.3
 opencv-python-headless==4.10.0.84
 numpy==1.26.4
 gunicorn==23.0.0
+yt-dlp>=2024.8.6
