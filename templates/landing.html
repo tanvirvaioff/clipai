@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipAI — Turn Long Videos Into Viral Shorts</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#171717;--panel:#202020;--panel2:#292929;--line:#353535;--text:#f4f4f4;--muted:#999;--accent:#b9f36b}
+body{margin:0;background:var(--bg);color:var(--text);font:14px Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit}
+/* top nav */
+.topnav{display:flex;justify-content:space-between;align-items:center;padding:18px 32px;max-width:1240px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+.logo .mark{width:36px;height:36px;border-radius:10px;background:var(--accent);color:#101010;font-weight:900;display:grid;place-items:center;font-size:15px}
+.navlinks{display:flex;gap:26px;color:var(--muted);font-size:13px}
+.navlinks a:hover{color:#fff}
+.btn{border:0;border-radius:10px;background:#f5f5f5;color:#111;font-weight:750;padding:13px 20px;display:inline-flex;justify-content:center;align-items:center;gap:8px;cursor:pointer;text-decoration:none}
+.btn:hover{background:#e1f9c1}
+.btn.small{padding:9px 14px;border-radius:8px;font-size:12px}
+.btn.primary{background:#f5f5f5}
+.btn.ghost{background:transparent;color:#bbb;border:1px solid #393939}
+/* banner */
+.banner{display:flex;justify-content:center;align-items:center;gap:18px;background:var(--panel);border:1px solid #303030;border-radius:10px;padding:10px 16px;margin:10px auto 42px;max-width:620px;color:#c7c7c7;font-size:12px}
+/* hero */
+.hero{text-align:center;max-width:850px;margin:0 auto 55px;padding:0 20px}
+.pill{display:inline-block;border:1px solid #3c3c3c;border-radius:20px;padding:7px 14px;color:#c4dca7;font-size:10px;letter-spacing:1.7px;margin-bottom:20px;font-weight:600}
+.hero h1{font-size:clamp(34px,4.5vw,56px);letter-spacing:-2px;line-height:1.06;margin:0 0 16px;font-weight:800}
+.accent{color:var(--accent)}
+.hero>p{color:var(--muted);margin-bottom:28px;font-size:16px}
+.urlbox{display:flex;align-items:center;gap:10px;border:1px solid #4b4b4b;background:#303030;border-radius:18px;padding:7px 7px 7px 18px;min-height:64px;box-shadow:0 0 0 1px #ffffff05;max-width:640px;margin:0 auto}
+.urlbox .link{font-size:20px;color:#aaa}
+.urlbox input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:white;padding:12px;font-size:15px}
+.urlbox input::placeholder{color:#8d8d8d}
+.import-options{display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:center;margin:18px 0 34px;color:#aaa;font-size:13px}
+.import-options a,.import-options label{color:#aaa;cursor:pointer}
+.import-options a:hover,.import-options label:hover{color:white}
+.chips{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+.chips a{border:1px solid #3a3a3a;border-radius:22px;padding:10px 14px;background:#1c1c1c;color:#d0d0d0;font-size:13px}
+.chips a:hover{border-color:#a6d966;color:#fff}
+/* sections */
+section{max-width:1240px;margin:0 auto;padding:0 32px 50px}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 18px}
+.section-head h2{margin:0;font-size:22px;font-weight:700}
+.muted{color:var(--muted)}
+.demo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.demo{min-height:180px;border-radius:15px;border:1px solid #373737;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;position:relative;cursor:pointer;transition:.2s}
+.demo:hover{transform:translateY(-3px)}
+.demo:before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#000c,transparent 70%)}
+.demo>*{position:relative}
+.demo small{font-size:10px;letter-spacing:1px;color:#ddd}
+.demo h3{font-size:21px;margin:8px 0}
+.demo p{font-size:12px;margin:0;color:#e0e0e0}
+.teal{background:linear-gradient(135deg,#1b4b5d,#0b9eaa)}
+.blue{background:linear-gradient(135deg,#0649a4,#11a9e4)}
+.purple{background:linear-gradient(135deg,#3a2b52,#9c5c42)}
+.feature-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.feature{background:var(--panel);border:1px solid #333;border-radius:13px;padding:20px;min-height:120px}
+.feature b{font-size:14px}
+.feature p{color:var(--muted);line-height:1.5;font-size:12px;margin:8px 0 0}
+/* stats strip */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:50px}
+.stat{background:var(--panel);border:1px solid #333;border-radius:13px;padding:22px;text-align:center}
+.stat b{font-size:28px;color:var(--accent)}
+.stat p{color:var(--muted);font-size:12px;margin:6px 0 0}
+/* footer */
+footer{border-top:1px solid #2b2b2b;margin-top:30px}
+.foot{max-width:1240px;margin:0 auto;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px}
+@media(max-width:850px){.feature-grid{grid-template-columns:repeat(2,1fr)}.demo-grid{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr}.navlinks{display:none}}
+@media(max-width:580px){.urlbox{flex-wrap:wrap;border-radius:13px}.urlbox input{width:calc(100% - 45px);flex:auto}.urlbox .btn{width:100%}.demo-grid,.feature-grid{grid-template-columns:1fr}.topnav{padding:14px 18px}section{padding:0 18px 40px}}
+</style></head>
+<body>
+<nav class="topnav">
+  <a class="logo" href="/"><span class="mark">C</span>ClipAI</a>
+  <div class="navlinks"><a href="#demos">Demo projects</a><a href="#tools">Features</a><a href="/dashboard">Dashboard</a></div>
+  <a class="btn small" href="/dashboard">Get Started</a>
+</nav>
+
+<div class="banner"><span>✦ Turn long videos into scroll-stopping clips with ClipAI.</span><a class="btn small" href="/dashboard">Get started</a></div>
+
+<section class="hero" style="padding:0 20px">
+  <div class="pill">AI-POWERED VIDEO CLIPPING</div>
+  <h1>Turn long videos into<br><span class="accent">scroll-stopping clips.</span></h1>
+  <p>One video in. Ready-to-share shorts out.</p>
+  <form class="urlbox" action="/workflow" method="post">
+    <span class="link">↗</span><input name="youtube_url" placeholder="Paste a YouTube link" aria-label="YouTube URL">
+    <button class="btn primary" type="submit">Get clips in 1 click →</button>
+  </form>
+  <div class="import-options">
+    <label class="btn ghost">📁 Upload video<input type="file" id="heroUpload" accept="video/*" hidden></label>
+    <a href="/dashboard">📊 Go to dashboard</a>
+    <a href="#demos">Try a sample project</a>
+  </div>
+  <div class="chips">
+    <a href="/dashboard">▣ Long video to shorts</a><a href="/dashboard">✂ Edit video</a><a href="/dashboard">▤ AI captions</a><a href="/dashboard">◈ AI producer</a><a href="/dashboard">⌗ AI reframe</a><a href="/dashboard">♫ Auto SFX</a><a href="/dashboard">🎙 Voice dubbing</a><a href="/dashboard">〽 Enhance speech</a>
+  </div>
+</section>
+
+<section>
+  <div class="stats">
+    <div class="stat"><b>10M+</b><p>Clips generated</p></div>
+    <div class="stat"><b>7</b><p>Caption styles</p></div>
+    <div class="stat"><b>16</b><p>Speech languages</p></div>
+  </div>
+</section>
+
+<section id="demos">
+  <div class="section-head"><h2>Start from a demo project</h2><span class="muted">ClipAI studio</span></div>
+  <div class="demo-grid">
+    <a class="demo teal" href="/dashboard"><small>CREATOR STORY · 18 CLIPS</small><h3>Creator Highlights</h3><p>Vertical clips · Auto captions</p></a>
+    <a class="demo blue" href="/dashboard"><small>SPORTS · 12 CLIPS</small><h3>Sports Highlights</h3><p>Smart framing · Shorts</p></a>
+    <a class="demo purple" href="/dashboard"><small>PODCAST · 25 CLIPS</small><h3>Podcast Moments</h3><p>Animated captions · Reframe</p></a>
+  </div>
+</section>
+
+<section id="tools">
+  <div class="section-head"><h2>Everything for short-form video</h2></div>
+  <div class="feature-grid">
+    <div class="feature"><b>✂ AI clip finder</b><p>Viral-moment detection with hook, flow, value and trend scoring.</p></div>
+    <div class="feature"><b>💬 Animated captions</b><p>7 styles — Hormozi, Beast, Leon — with word-level highlight.</p></div>
+    <div class="feature"><b>🎯 Smart reframe</b><p>Face-tracked 9:16 crop that keeps the speaker in frame.</p></div>
+    <div class="feature"><b>⬇ Export clips</b><p>MP4 + SRT downloads, bulk queue, live progress tracking.</p></div>
+  </div>
+</section>
+
+<footer><div class="foot">
+  <span>© 2026 ClipAI — AI video clipping studio</span>
+  <a href="/dashboard" style="color:var(--accent)">Launch the app →</a>
+</div></footer>
+
+<form id="upform" action="/workflow" method="post" enctype="multipart/form-data" style="display:none">
+  <input type="file" name="video" id="upfile" accept="video/*">
+</form>
+<script>
+document.getElementById('heroUpload').addEventListener('change', function(){
+  if(this.files.length){
+    var dt = new DataTransfer();
+    dt.items.add(this.files[0]);
+    document.getElementById('upfile').files = dt.files;
+    document.getElementById('upform').submit();
+  }
+});
+</script>
+</body></html>
