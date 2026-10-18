@@ -226,6 +226,22 @@
               </select>
             </div>
 
+            <!-- AI Provider Keys -->
+            <div class="space-y-2 md:col-span-2 bg-[#0a0a0f] p-4 rounded-xl border border-brand-border">
+              <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">AI API Keys</label>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[11px] text-gray-400">Groq Key (FREE)</label>
+                  <input type="password" id="setting-groq-key" placeholder="gsk_..." class="w-full bg-[#12121c] text-gray-200 text-sm px-3 py-2 rounded-lg border border-brand-border focus:border-brand-lime focus:outline-none mt-1">
+                </div>
+                <div>
+                  <label class="text-[11px] text-gray-400">OpenAI Key (Recommended)</label>
+                  <input type="password" id="setting-openai-key" placeholder="sk-..." class="w-full bg-[#12121c] text-gray-200 text-sm px-3 py-2 rounded-lg border border-brand-border focus:border-brand-lime focus:outline-none mt-1">
+                </div>
+              </div>
+              <p class="text-[11px] text-gray-500">Keys are saved in your browser only. OpenAI gives smarter viral-moment picks.</p>
+            </div>
+
             <!-- Clip Duration Target -->
             <div class="space-y-2">
               <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Target Clip Length</label>
@@ -470,10 +486,16 @@ var JPCLIPS_SRC = {{ src|tojson }};
       fd.append('n_clips', '3');
       fd.append('provider', 'openai');
       fd.append('face_track', 'on');
-      // Provider keys from localStorage if saved
+      // Provider keys: from input fields (save to localStorage) or localStorage
       try {
-        var gk = localStorage.getItem('groq_key'); if (gk) fd.append('groq_key', gk);
-        var ok = localStorage.getItem('openai_key'); if (ok) fd.append('openai_key', ok);
+        var gkInput = document.getElementById('setting-groq-key');
+        var okInput = document.getElementById('setting-openai-key');
+        var gk = (gkInput && gkInput.value.trim()) || localStorage.getItem('groq_key') || '';
+        var ok = (okInput && okInput.value.trim()) || localStorage.getItem('openai_key') || '';
+        if (gkInput && gkInput.value.trim()) localStorage.setItem('groq_key', gkInput.value.trim());
+        if (okInput && okInput.value.trim()) localStorage.setItem('openai_key', okInput.value.trim());
+        if (gk) fd.append('groq_key', gk);
+        if (ok) fd.append('openai_key', ok);
       } catch(e){}
       fetch('/start', {method:'POST', body:fd, redirect:'follow'})
         .then(function(r){
@@ -484,6 +506,15 @@ var JPCLIPS_SRC = {{ src|tojson }};
   }
   // Show video source info
   var src = window.JPCLIPS_SRC || {};
+  // Load saved API keys into inputs
+  try {
+    var gkSaved = localStorage.getItem('groq_key');
+    var okSaved = localStorage.getItem('openai_key');
+    var gkEl = document.getElementById('setting-groq-key');
+    var okEl = document.getElementById('setting-openai-key');
+    if (gkSaved && gkEl) gkEl.value = gkSaved;
+    if (okSaved && okEl) okEl.value = okSaved;
+  } catch(e){}
   var infoEl = document.getElementById('video-source-info');
   if (!infoEl) {
     var h1 = section.querySelector('h1');
