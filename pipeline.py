@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ClipAI pipeline: transcribe -> viral moments -> face-tracked 9:16 clips + karaoke captions."""
-import os, json, re, math, subprocess, tempfile, requests
+import os, json, re, math, subprocess, tempfile, threading, requests
 import cv2
 import mediapipe as mp
 
@@ -139,6 +139,7 @@ For each moment give 4 sub-scores (0-25 each, MUST sum exactly to the total scor
   - flow: tight pacing with satisfying payoff?
   - value: emotional impact, quotability, shareability?
   - trend: controversial/bold/relatable angle?
+- In the "hook" field, wrap 1-4 EMPHASIS words in *asterisks* (e.g. "this is *insane* and totally *unbelievable*") — the punchiest high-energy words that deserve on-screen highlight.
 - Respond ONLY with JSON: [{{"start": 12.5, "end": 47.0, "score": 95, "subs": {{"hook": 24, "flow": 23, "value": 25, "trend": 23}}, "title": "short punchy title (under 8 words, clickbait style)", "hook": "the exact opening line"}}]
 
 Transcript:
@@ -218,10 +219,20 @@ def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir,
         e = snap_time(words, e, "e")
         if e <= s or e - s < 5:
             continue
+        # LLM-marked emphasis words: *word* in the hook -> on-screen highlight
+        _hk_raw = str(mo.get("hook", ""))
+        emph = []
+        for _mm in re.findall(r"\*([^*]{1,40})\*", _hk_raw):
+            for _w in _mm.split():
+                _t = _w.lower().strip(".,!?;:'\"()[]-*")
+                if _t and _t not in emph:
+                    emph.append(_t)
+        _hk = re.sub(r"\*([^*]+)\*", r"\1", _hk_raw)[:120]
         clean.append({"start": round(s, 2), "end": round(e, 2),
                       "score": int(mo.get("score", 80)),
                       "title": str(mo.get("title", "Clip"))[:60],
-                      "hook": str(mo.get("hook", ""))[:120],
+                      "hook": _hk,
+                      "emphasis": emph,
                       "subs": _parse_subs(mo)})
     clean.sort(key=lambda m: -m["score"])
     # de-overlap
@@ -256,8 +267,70 @@ def _parse_subs(mo):
                "value": q + (1 if r > 2 else 0), "trend": q}
     return out
 
-# ---------------- face tracking (MediaPipe) ----------------
+# ---------------- face tracking (YOLOv8 primary + MediaPipe fallback) ----------------
 _FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+
+_YOLO = None
+_YOLO_TRIED = False
+_YOLO_LOCK = threading.Lock()
+
+def _get_yolo():
+    """Load YOLOv8n once (primary detector). None if ultralytics/torch missing."""
+    global _YOLO, _YOLO_TRIED
+    if _YOLO_TRIED:
+        return _YOLO
+    _YOLO_TRIED = True
+    try:
+        from ultralytics import YOLO
+        # yolov8n.pt auto-downloads on first use (~6MB); pre-downloaded in Docker
+        _YOLO = YOLO("yolov8n.pt")
+    except Exception:
+        _YOLO = None
+    return _YOLO
+
+def _detect_faces(frame, w, h, yolo, mp_detector):
+    """Detect faces, returning [(x0, y0, bw, bh)] in source pixels.
+
+    Primary: YOLOv8 person detection (very stable, no flicker) with the face
+    estimated at the top-center of each person box — ideal for talking-head
+    / podcast tracking. Fallback: MediaPipe face detection (true face boxes)
+    when YOLO finds nobody or is unavailable.
+    """
+    boxes = []
+    if yolo is not None:
+        try:
+            # downscale for speed, scale boxes back up
+            th = 480
+            tw = max(320, int(w * th / h))
+            small = cv2.resize(frame, (tw, th))
+            sx, sy = w / float(tw), h / float(th)
+            with _YOLO_LOCK:
+                r = yolo.predict(small, verbose=False, classes=[0],
+                                 conf=0.35)[0]
+            if r.boxes is not None:
+                for b in r.boxes:
+                    x0, y0, x1, y1 = b.xyxy[0].tolist()
+                    x0, x1 = x0 * sx, x1 * sx
+                    y0, y1 = y0 * sy, y1 * sy
+                    pw, ph = x1 - x0, y1 - y0
+                    if pw < 20 or ph < 20:
+                        continue
+                    fx, fy = (x0 + x1) / 2.0, y0 + 0.12 * ph
+                    fw_, fh_ = 0.55 * pw, 0.38 * ph
+                    boxes.append((fx - fw_ / 2.0, fy - fh_ / 2.0, fw_, fh_))
+        except Exception:
+            boxes = []
+    if not boxes and mp_detector is not None:
+        try:
+            res = mp_detector.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        except Exception:
+            res = None
+        if res is not None and res.detections:
+            for d in res.detections:
+                bb = d.location_data.relative_bounding_box
+                boxes.append((bb.xmin * w, bb.ymin * h,
+                              bb.width * w, bb.height * h))
+    return boxes
 
 def _frame_hist_diff(prev_hist, frame):
     """Histogram chi-square difference between frames (0=same, large=different)."""
@@ -280,17 +353,21 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
     - scene cut detection: histogram comparison resets tracker on cuts
       (no smoothing across cuts — avoids "ghost pan" artifacts)
     - multi-face: up to 4 faces for split2/grid3/grid4 layouts
-    - exponential smoothing (alpha=0.3): responsive yet smooth
+    - exponential smoothing (alpha=0.2): smooth, no jitter
     - hysteresis: rank-0 only switches faces after 2+ seconds consistency
     - no-face: KEEP last position (never jump to center)
+    - detector: YOLOv8 person tracking (primary, ultra-stable) with
+      MediaPipe face detection fallback
     """
     MAXF = 4
     MIN_RATIO = 0.25
-    # MediaPipe face detection (OpenShorts-style): full-range model handles
-    # profile/side faces, low light and partial occlusions far better
-    # than YuNet. model_selection=1 = full range (faces at any distance).
+    # Primary: YOLOv8 (stable person tracking, no flicker). Fallback:
+    # MediaPipe full-range face detection (profile/side faces, low light).
+    yolo = _get_yolo()
     mp_detector = mp.solutions.face_detection.FaceDetection(
         model_selection=1, min_detection_confidence=0.5)
+    log(job_dir, "face detector: %s" %
+        ("YOLOv8 + MediaPipe fallback" if yolo is not None else "MediaPipe"))
     cap = cv2.VideoCapture(video_path)
     # samples: (t_rel, n, [(x, y), ...], is_cut)
     samples = []
@@ -308,21 +385,15 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
         small = cv2.resize(frame, (64, 36))
         diff, prev_hist = _frame_hist_diff(prev_hist, small)
         is_cut = diff > 2.5  # tuned threshold for hard cuts
-        res = mp_detector.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        det_boxes = _detect_faces(frame, w, h, yolo, mp_detector)
         raw = []
-        boxes = []
-        if res.detections:
-            for d in res.detections:
-                bb = d.location_data.relative_bounding_box
-                boxes.append((bb.xmin * w, bb.ymin * h,
-                              bb.width * w, bb.height * h))
-        if boxes:
-            order = sorted(boxes, key=lambda b: b[2] * b[3], reverse=True)
+        if det_boxes:
+            order = sorted(det_boxes, key=lambda b: b[2] * b[3], reverse=True)
             a0 = order[0][2] * order[0][3]
             for (x0, y0, bwf, bhf) in order[:MAXF]:
                 if bwf * bhf < MIN_RATIO * a0:
                     break
-                # MediaPipe boxes can extend past frame edges — clamp center
+                # detector boxes can extend past frame edges — clamp center
                 cx = min(max(x0 + bwf / 2, 0), w)
                 cy = min(max(y0 + bhf / 2, 0), h)
                 raw.append((cx / w * vw, cy / h * vh_src))
@@ -392,14 +463,14 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
         # ranks 1-3: exponential follow (grid layouts use averaged positions)
         for r in range(1, MAXF):
             if r < len(raw):
-                trk[r][0] = 0.7 * trk[r][0] + 0.3 * raw[r][0]
-                trk[r][1] = 0.7 * trk[r][1] + 0.3 * raw[r][1]
+                trk[r][0] = 0.8 * trk[r][0] + 0.2 * raw[r][0]
+                trk[r][1] = 0.8 * trk[r][1] + 0.2 * raw[r][1]
         targets.append((t_rel, n, [list(p) for p in trk]))
 
     # Stage 2: slew-rate limit (rank 0) + EXPONENTIAL smoothing (all ranks)
-    MAX_DX = vw * 0.8 * step
-    MAX_DY = vh_src * 0.8 * step
-    ALPHA = 0.3
+    MAX_DX = vw * 0.5 * step
+    MAX_DY = vh_src * 0.5 * step
+    ALPHA = 0.2
     sm = []
     prev = [list(p) for p in targets[0][2]]
     for t_rel, n, tpos in targets:
@@ -485,16 +556,28 @@ _KEYWORDS = {
     "business", "mistake", "mistakes", "lesson", "lessons", "fear", "scared",
     "dangerous", "killer", "dead", "death", "kill", "fight", "war", "police",
     "arrest", "caught", "busted", "scam", "fake", "real",
+    # extra high-impact / emotional words (OpusClip-style emphasis)
+    "epic", "legendary", "genius", "brilliant", "stupid", "dumb", "idiot",
+    "powerful", "powerless", "dominate", "dominates", "destroy", "destroyed",
+    "crush", "crushed", "exposed", "banned", "illegal", "million", "billionaire",
+    "overnight", "instantly", "immediately", "finally", "actually", "literally",
+    "honestly", "seriously", "desperate", "obsessed", "toxic", "redflag",
+    "cheat", "cheating", "liar", "beg", "begging", "cry", "crying", "scream",
+    "quit", "fired",
 }
 
-def _is_keyword(word):
-    """OpusClip-style keyword highlight heuristic."""
+def _is_keyword(word, extra=None):
+    """OpusClip-style keyword highlight heuristic.
+
+    extra: set of lowercase LLM-marked emphasis words for this clip."""
     raw = word.strip()
     if not raw:
         return False
-    t = raw.lower().strip(".,!?;:'\"()[]-")
+    t = raw.lower().strip(".,!?;:'\"()[]-*")
     if not t:
         return False
+    if extra and t in extra:
+        return True  # LLM-marked emphasis word
     if t in _KEYWORDS:
         return True
     if len(raw) >= 3 and raw.isupper():
@@ -504,13 +587,15 @@ def _is_keyword(word):
     return False
 
 def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
-              pos="middle"):
+              pos="middle", emphasis=None):
     """Caption styles: hormozi1 (gold karaoke dual-color), hormozi2 (gold karaoke),
     hormozi3 (inverted: yellow base, white tracker), beast (big yellow caps),
     leon (orange highlight on black boxes), minimal (small white).
-    'hormozi' is an alias for hormozi1. pos: top / middle / bottom."""
+    'hormozi' is an alias for hormozi1. pos: top / middle / bottom.
+    emphasis: list of lowercase LLM-marked words -> green keyword highlight."""
     if style == "hormozi":
         style = "hormozi1"
+    extra_kw = set(w.lower() for w in (emphasis or []) if w)
     # caption placement: (ASS alignment, MarginV)
     _POS = {"top": (8, 150), "middle": (5, 30), "bottom": (2, 300)}
     align, marginv = _POS.get(pos, _POS["middle"])
@@ -538,9 +623,9 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
         t = max(0, t - start)
         return "%d:%02d:%05.2f" % (int(t // 3600), int(t % 3600 // 60), t % 60)
     if style == "beast":
-        # big yellow all-caps, thick black outline
-        st = ("Style: Cap,Montserrat Black,96,&H0000FFFF,&H000000FF,&H00000000,&H00000000,"
-              "-1,0,0,0,100,100,0,0,1,6,0,%d,10,10,%d,1" % (align, marginv))
+        # big yellow all-caps, thick black outline + soft drop shadow
+        st = ("Style: Cap,Montserrat Black,100,&H0000FFFF,&H000000FF,&H00000000,&H00000000,"
+              "-1,0,0,0,100,100,2,0,1,6,2,%d,10,10,%d,1" % (align, marginv))
         body = lambda ln: _ass_safe(" ".join(c["w"] for c in ln).upper())
         hl = False
     elif style == "minimal":
@@ -556,19 +641,19 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
         hl = "leon"
     elif style == "hormozi2":
         # hormozi variant: white base, yellow tracker only (no keyword color)
-        st = ("Style: Cap,Montserrat Black,96,&H00FFFFFF&,&H003DD9FF&,&H00000000&,&H80000000&,"
-              "-1,0,0,0,100,100,0,0,1,8,0,%d,10,10,%d,1" % (align, marginv))
+        st = ("Style: Cap,Montserrat Black,100,&H00FFFFFF&,&H003DD9FF&,&H00000000&,&H80000000&,"
+              "-1,0,0,0,100,100,2,0,1,8,2,%d,10,10,%d,1" % (align, marginv))
         hl = "plain"
     elif style == "hormozi3":
         # hormozi inverted: yellow base text, white tracker
-        st = ("Style: Cap,Montserrat Black,96,&H003DD9FF&,&H00FFFFFF&,&H00000000&,&H80000000&,"
-              "-1,0,0,0,100,100,0,0,1,8,0,%d,10,10,%d,1" % (align, marginv))
+        st = ("Style: Cap,Montserrat Black,100,&H003DD9FF&,&H00FFFFFF&,&H00000000&,&H80000000&,"
+              "-1,0,0,0,100,100,2,0,1,8,2,%d,10,10,%d,1" % (align, marginv))
         hl = "plain"
     else:
         # hormozi: Montserrat Black, ALL CAPS, white base, yellow tracker,
-        # green keyword highlight (OpusClip dual-color), 8px outline
-        st = ("Style: Cap,Montserrat Black,96,&H00FFFFFF&,&H003DD9FF&,&H00000000&,&H80000000&,"
-              "-1,0,0,0,100,100,0,0,1,8,0,%d,10,10,%d,1" % (align, marginv))
+        # green keyword highlight (OpusClip dual-color), 8px outline + shadow
+        st = ("Style: Cap,Montserrat Black,100,&H00FFFFFF&,&H003DD9FF&,&H00000000&,&H80000000&,"
+              "-1,0,0,0,100,100,2,0,1,8,2,%d,10,10,%d,1" % (align, marginv))
         hl = True
     out = ["[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920",
            "WrapStyle: 2", "", "[V4+ Styles]",
@@ -594,7 +679,7 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
                     elif ci == wi:
                         # hormozi3 tracker is white (inverted), others yellow
                         col = WHITE if style == "hormozi3" else YELLOW
-                    elif hl is True and _is_keyword(c["w"]):
+                    elif hl is True and _is_keyword(c["w"], extra_kw):
                         col = GREEN
                     else:
                         # hormozi3 base is yellow, others white
@@ -698,7 +783,8 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
     ass = os.path.join(job_dir, "clip%d.ass" % idx)
     no_cap = (style == "none")
     if not no_cap:
-        write_ass(job_dir, words, s, e, ass, style=style, pos=caption_pos)
+        write_ass(job_dir, words, s, e, ass, style=style, pos=caption_pos,
+                  emphasis=moment.get("emphasis"))
     srt_path = os.path.join(out_dir, base + ".srt")
     write_srt(words, s, e, srt_path)
     if no_cap:
@@ -719,7 +805,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
     if is_portrait:
         vf = ",".join(p for p in ["%s%s" % (prescale, zfilter), sub] if p)
         rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
-                              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                              "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-tune", "film",
                               "-c:a", "aac", "-b:a", "160k", out])
     else:
         # smooth face-tracked crop in ONE pass via sendcmd (0.5s samples)
@@ -762,7 +848,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
             rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur),
                                   "-filter_complex", fc,
                                   "-map", "[grid_out]", "-map", "0:a?",
-                                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                                  "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-tune", "film",
                                   "-c:a", "aac", "-b:a", "160k", out])
             if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
                 log(job_dir, "clip %d %s subtitles FAILED: %s" % (idx + 1, mode, err[-800:]))
@@ -772,20 +858,20 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
             with open(cmds, "w") as f:
                 for tt, _n, faces in track:
                     x, y = faces[0] if faces else (vw / 2, vh / 2)
-                    cx = int(max(0, min(vw - cw, x - cw / 2)))
-                    cy = int(max(0, min(vh - vh, y - vh / 2)))
-                    f.write("%.1f crop x %d;\n" % (tt, cx))
-                    f.write("%.1f crop y %d;\n" % (tt, cy))
+                    cx = max(0.0, min(float(vw - cw), x - cw / 2.0))
+                    cy = max(0.0, min(float(vh - vh), y - vh / 2.0))
+                    f.write("%.1f crop x %.2f;\n" % (tt, cx))
+                    f.write("%.1f crop y %.2f;\n" % (tt, cy))
             _t0 = track[0][2][0] if (track and track[0][2]) else (vw / 2, vh / 2)
             t0x, t0y = _t0[0], _t0[1]
-            init_cx = int(max(0, min(vw - cw, t0x - cw / 2)))
-            init_cy = int(max(0, min(vh - vh, t0y - vh / 2)))
+            init_cx = max(0.0, min(float(vw - cw), t0x - cw / 2.0))
+            init_cy = max(0.0, min(float(vh - vh), t0y - vh / 2.0))
             vf = ",".join(p for p in [
                 "sendcmd=f='%s'" % cmds.replace("'", r"'\''"),
-                "crop=%d:%d:x=%d:y=%d" % (cw, vh, init_cx, init_cy),
+                "crop=%d:%d:x=%.2f:y=%.2f" % (cw, vh, init_cx, init_cy),
                 "%s%s" % (prescale, zfilter), sub] if p)
             rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur), "-vf", vf,
-                                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                                  "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-tune", "film",
                                   "-c:a", "aac", "-b:a", "160k", out])
             try:
                 os.remove(cmds)
@@ -861,6 +947,7 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
         moments = [{"start": round(ms, 2), "end": round(me, 2), "score": 100,
                     "title": src_name[:60],
                     "hook": "",
+                    "emphasis": [],
                     "subs": {"hook": 25, "flow": 25, "value": 25, "trend": 25}}]
         log(job_dir, "manual mode: full clip %.0f-%.0fs" % (ms, me))
     else:
