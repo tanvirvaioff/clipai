@@ -806,8 +806,14 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
     if no_cap:
         sub = ""
     else:
-        ass_esc = ass.replace("'", r"'\''").replace(":", r"\:")
-        sub = "subtitles='%s':fontsdir='%s'" % (ass_esc, _FONTS)
+        # copy ASS to a safe temp path (no special chars) for ffmpeg
+        import shutil
+        safe_ass = os.path.join("/tmp", "cap_%s.ass" % os.path.basename(job_dir))
+        try:
+            shutil.copyfile(ass, safe_ass)
+        except Exception:
+            safe_ass = ass
+        sub = "subtitles='%s':fontsdir='%s'" % (safe_ass, _FONTS)
     # auto-zoom: subtle 1.0 -> 1.08 push-in over the clip (Submagic-style)
     # zoompan needs oversized input, so prescale to 1296x2304 when zoom is on
     zfilter = ""
