@@ -72,11 +72,12 @@
       <button type="button" id="adv-toggle" class="flex items-center gap-2 text-[13px] text-os-muted hover:text-white mt-6 mb-1 transition-colors">
         <i class="fa-solid fa-chevron-down text-[10px]" id="adv-chev"></i> advanced options
       </button>
-      <div id="adv-body" class="hidden mt-3 space-y-4 border-t border-os-border pt-4">
-        <div class="grid grid-cols-2 gap-4">
+      <div id="adv-body" class="hidden mt-4 border-t border-os-border pt-5">
+        <!-- clips / length -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="eyebrow !text-[10px] block mb-2">number of clips</label>
-            <select name="n_clips" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+            <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">clips to aim for</label>
+            <select name="n_clips" class="os-select w-full px-3.5 py-3 text-[13.5px]">
               <option value="1">1 clip</option>
               <option value="2">2 clips</option>
               <option value="3" selected>3 clips</option>
@@ -86,20 +87,44 @@
             </select>
           </div>
           <div>
-            <label class="eyebrow !text-[10px] block mb-2">clip length</label>
-            <select name="clip_length" class="os-select w-full px-3 py-2.5 text-[13.5px]">
-              <option value="auto" selected>Auto (15–60s)</option>
-              <option value="0-30s">Short (10–30s)</option>
-              <option value="30-60s">Medium (30–60s)</option>
-              <option value="60-180s">Long (60–180s)</option>
-            </select>
+            <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">min length (s)</label>
+            <input type="number" name="min_len" id="min_len" value="15" min="5" max="180" class="os-input w-full px-3.5 py-3 text-[13.5px]">
+          </div>
+          <div>
+            <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">max length (s)</label>
+            <input type="number" name="max_len" id="max_len" value="60" min="10" max="180" class="os-input w-full px-3.5 py-3 text-[13.5px]">
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <p class="text-[12px] text-os-faint leading-relaxed mt-2.5">Targets, not guarantees: the AI returns fewer clips when the material doesn't hold them.</p>
+
+        <!-- length preset -->
+        <div class="mt-4">
+          <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">length preset</label>
+          <select name="clip_length" id="clip_length" class="os-select w-full px-3.5 py-3 text-[13.5px]">
+            <option value="auto" selected>Auto (20–50s)</option>
+            <option value="0-30s">Short (10–30s)</option>
+            <option value="30-60s">Medium (30–60s)</option>
+            <option value="60-180s">Long (60–180s)</option>
+          </select>
+        </div>
+
+        <!-- vertical layout -->
+        <div class="eyebrow mt-7 mb-3.5">vertical layout</div>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" name="auto_headline" checked class="os-check mt-0.5">
+          <span>
+            <span class="block text-[13.5px] font-semibold text-gray-200">auto hook titles on clips</span>
+            <span class="block text-[12px] text-os-faint mt-1 leading-relaxed">You can change each clip's hook text, style, position and size afterwards with its hook button.</span>
+          </span>
+        </label>
+
+        <!-- captions -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
           <div>
-            <label class="eyebrow !text-[10px] block mb-2">caption style</label>
-            <select name="caption_style" class="os-select w-full px-3 py-2.5 text-[13.5px]">
-              <option value="hormozi1" selected>Hormozi 1</option>
+            <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">caption style</label>
+            <select name="caption_style" class="os-select w-full px-3.5 py-3 text-[13.5px]">
+              <option value="auto" selected>Auto (AI picks per video)</option>
+              <option value="hormozi1">Hormozi 1</option>
               <option value="hormozi2">Hormozi 2</option>
               <option value="hormozi3">Hormozi 3</option>
               <option value="beast">Beast</option>
@@ -109,18 +134,20 @@
             </select>
           </div>
           <div>
-            <label class="eyebrow !text-[10px] block mb-2">caption position</label>
-            <select name="caption_pos" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+            <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">caption position</label>
+            <select name="caption_pos" class="os-select w-full px-3.5 py-3 text-[13.5px]">
               <option value="top">Top</option>
               <option value="middle" selected>Middle</option>
               <option value="bottom">Bottom</option>
             </select>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
+
+        <!-- language / provider -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
           <div>
-            <label class="eyebrow !text-[10px] block mb-2">speech language</label>
-            <select name="speech_lang" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+            <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">speech language</label>
+            <select name="speech_lang" class="os-select w-full px-3.5 py-3 text-[13.5px]">
               <option value="en" selected>English</option>
               <option value="es">Spanish</option>
               <option value="fr">French</option>
@@ -140,25 +167,29 @@
             </select>
           </div>
           <div>
-            <label class="eyebrow !text-[10px] block mb-2">ai provider</label>
-            <select name="provider" id="provider" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+            <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">ai provider</label>
+            <select name="provider" id="provider" class="os-select w-full px-3.5 py-3 text-[13.5px]">
               <option value="groq" selected>⚡ Groq (FREE)</option>
               <option value="openai">🧠 OpenAI (Recommended ⭐)</option>
               <option value="gemini">✨ Gemini (Google)</option>
             </select>
           </div>
         </div>
-        <div>
-          <label class="eyebrow !text-[10px] block mb-2">api keys <span class="normal-case tracking-normal text-os-faint">(saved in your browser only)</span></label>
-          <div class="grid grid-cols-2 gap-4">
-            <input type="password" id="groq_key" name="groq_key" placeholder="Groq key (gsk_…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
-            <input type="password" id="openai_key" name="openai_key" placeholder="OpenAI key (sk-…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
-            <input type="password" id="gemini_key" name="gemini_key" placeholder="Gemini key (AI…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
+
+        <!-- api keys -->
+        <div class="mt-4">
+          <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">api keys <span class="normal-case font-normal tracking-normal text-os-faint">(saved in your browser only)</span></label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input type="password" id="groq_key" name="groq_key" placeholder="Groq key (gsk_…)" class="os-input px-3.5 py-3 text-[13px] placeholder:text-os-faint">
+            <input type="password" id="openai_key" name="openai_key" placeholder="OpenAI key (sk-…)" class="os-input px-3.5 py-3 text-[13px] placeholder:text-os-faint">
+            <input type="password" id="gemini_key" name="gemini_key" placeholder="Gemini key (AI…)" class="os-input px-3.5 py-3 text-[13px] placeholder:text-os-faint">
           </div>
         </div>
-        <div>
-          <label class="eyebrow !text-[10px] block mb-2">what to look for <span class="normal-case tracking-normal text-os-faint">(optional — injected into the AI prompt)</span></label>
-          <input type="text" name="moment_prompt" placeholder="e.g. only the arguments about pricing, ignore the intro" class="os-input w-full px-3 py-2.5 text-[13px] placeholder:text-os-faint">
+
+        <!-- what to look for -->
+        <div class="mt-4">
+          <label class="block text-[10.5px] font-semibold uppercase tracking-[0.16em] text-os-muted mb-2">what to look for <span class="normal-case font-normal tracking-normal text-os-faint">(optional — injected into the AI prompt)</span></label>
+          <input type="text" name="moment_prompt" placeholder="e.g. only the arguments about pricing, ignore the intro" class="os-input w-full px-3.5 py-3 text-[13px] placeholder:text-os-faint">
         </div>
       </div>
 
@@ -248,6 +279,16 @@
     var hidden = advB.classList.toggle('hidden');
     advC.style.transform = hidden ? '' : 'rotate(180deg)';
   };
+
+  // length preset -> sync min/max inputs (same mapping as backend _DUR)
+  var presetSel = document.getElementById('clip_length'), minI = document.getElementById('min_len'), maxI = document.getElementById('max_len');
+  var PRESET_MAP = {"auto":[20,50],"0-30s":[10,30],"30-60s":[30,60],"60-180s":[60,180]};
+  if (presetSel && minI && maxI){
+    presetSel.addEventListener('change', function(){
+      var m = PRESET_MAP[presetSel.value] || [20,50];
+      minI.value = m[0]; maxI.value = m[1];
+    });
+  }
 
   // persist keys
   try {
