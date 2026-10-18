@@ -20,7 +20,8 @@
 
         <!-- video scan preview -->
         <div class="relative rounded-xl overflow-hidden bg-black border border-os-border aspect-video">
-          <div class="w-full h-full bg-gradient-to-br from-os-card2 to-black"></div>
+          <video id="src-preview" class="w-full h-full object-cover opacity-80" muted loop playsinline preload="metadata"></video>
+          <script>document.getElementById('src-preview').src = '/source/' + (window.location.pathname.split('/job/')[1] || '').split('/')[0]; document.getElementById('src-preview').play().catch(function(){});</script>
           <div class="absolute inset-0 pointer-events-none">
             <div class="scanline"></div>
             <div class="absolute inset-4 border border-os-orange/25 rounded-lg"></div>
