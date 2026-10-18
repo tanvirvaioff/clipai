@@ -22,8 +22,13 @@ body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSys
 .newbtn:hover{transform:translateY(-1px)}
 h2.sec{font-size:16px;margin:6px 0 14px;color:var(--txt)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:.15s}
-.card:hover{box-shadow:0 6px 16px rgba(0,0,0,.09)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:.15s}
+.card:hover{box-shadow:0 6px 16px rgba(0,0,0,.09);border-color:var(--acc)}
+.card .thumb{aspect-ratio:16/9;background:linear-gradient(135deg,#23232f,#121218);position:relative;overflow:hidden}
+.card .thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.card .thumb .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--mut)}
+.card .thumb .score{position:absolute;top:8px;right:8px;background:#fff;color:#111;font-size:11px;font-weight:800;border-radius:8px;padding:3px 9px}
+.card .cbd{padding:14px 16px 16px}
 .card b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:8px 0 4px}
 .card .meta{color:var(--mut);font-size:12px;margin-bottom:10px}
 .badge{font-size:11px;font-weight:700;border-radius:20px;padding:4px 12px;display:inline-block;margin-bottom:4px}
@@ -34,6 +39,7 @@ h2.sec{font-size:16px;margin:6px 0 14px;color:var(--txt)}
 .bar{background:#eef0f2;border-radius:8px;height:10px;overflow:hidden;margin-top:8px}
 .bar>div{height:100%;background:linear-gradient(90deg,#ff6b00,#ff9a3c);border-radius:8px;transition:width .5s}
 .step{font-size:12px;color:var(--mut);margin-top:6px}
+.time{font-size:11px;color:var(--mut);margin-left:8px}
 .open{display:inline-block;margin-top:12px;background:linear-gradient(180deg,#ff7d1a,#f25c00);color:#fff;border-radius:10px;padding:9px 20px;font-size:13px;font-weight:700;text-decoration:none}
 .empty{text-align:center;color:var(--mut);padding:50px 20px;background:var(--card);border:1px dashed var(--border);border-radius:16px}
 @media(max-width:760px){.side{display:none}.main{padding:18px}}
@@ -70,12 +76,18 @@ async function load(){
     const bc = x.status;
     const badge = bc==="done"?"done":bc==="error"?"error":bc==="running"?"running":"queued";
     const pct = x.progress||0;
-    const bar = (bc==="running"||bc==="queued") ? `<div class="bar"><div style="width:${pct}%"></div></div><div class="step">${esc(x.step||"")} ${pct}%</div>` : "";
+    const bar = (bc==="running"||bc==="queued") ? `<div class="bar"><div style="width:${pct}%"></div></div><div class="step">${esc(x.step||"")} · ${pct}%</div>` : "";
     const open = bc==="done" ? `<a class="open" href="/job/${x.jid}">Open →</a>` : bc==="running"||bc==="queued" ? `<a class="open" href="/job/${x.jid}">Watch →</a>` : "";
-    const sub = bc==="done" ? `${x.nclips} clips ready 🎉` : bc==="error" ? "❌ "+esc((x.error||"failed").slice(0,80)) : (x.source==="youtube"?"🔗 YouTube":"📤 Upload");
-    return `<div class="card"><span class="badge ${badge}">${badge}</span><b>${esc(x.name)}</b><div class="meta">${sub}</div>${bar}${open}</div>`;
+    const sub = bc==="done" ? `${x.nclips} clip${x.nclips===1?"":"s"} ready 🎉` : bc==="error" ? "❌ "+esc((x.error||"failed").slice(0,80)) : (x.source==="youtube"?"🔗 YouTube":"📤 Upload");
+    const thumb = (bc==="done"&&x.thumb)
+      ? `<video src="/preview/${x.jid}/${x.thumb}" preload="metadata" muted playsinline></video>${x.top_score?`<span class="score">⚡ ${x.top_score}</span>`:""}`
+      : `<div class="ph">${bc==="error"?"⚠️":bc==="running"?"⏳":"🎬"}</div>`;
+    return `<div class="card"><div class="thumb">${thumb}</div><div class="cbd"><span class="badge ${badge}">${badge}</span><span class="time">${ago(x.created)}</span><b>${esc(x.name)}</b><div class="meta">${sub}</div>${bar}${open}</div></div>`;
   }).join("");
 }
+function ago(ts){ if(!ts) return ""; const s=Math.floor(Date.now()/1000-ts);
+  if(s<60) return "just now"; if(s<3600) return Math.floor(s/60)+"m ago";
+  if(s<86400) return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; }
 function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}
 load(); setInterval(load, 4000);
 </script></body></html>
