@@ -1,132 +1,495 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JpClips — Turn Any Video Into Viral Shorts</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0a0a0f;--bg2:#121218;--card:#16161e;--card2:#1c1c26;--border:#262633;
---txt:#f1f1f4;--mut:#9a9ab0;--acc:#7c3aed;--white:#ffffff}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh;display:flex}
-/* left icon sidebar */
-.side{width:64px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;position:sticky;top:0;height:100vh;background:var(--bg)}
-.side a{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--mut);font-size:19px;text-decoration:none;transition:.15s}
-.side a:hover,.side a.on{background:var(--card2);color:var(--txt)}
-.side .sp{flex:1}
-.main{flex:1;min-width:0;padding:34px 28px 80px;max-width:1060px;margin:0 auto;width:100%}
-.toprow{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:46px}
-.pillbtn{border:1px solid var(--border);background:var(--card);color:var(--txt);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
-.pillbtn:hover{border-color:var(--acc)}
-/* link input pill */
-.linkbar{display:flex;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:40px;padding:8px 8px 8px 22px;max-width:640px;margin:0 auto;gap:10px;transition:.2s}
-.linkbar:focus-within{border-color:var(--acc)}
-.linkbar .lk{color:var(--mut);font-size:16px}
-.linkbar input{flex:1;background:transparent;border:0;outline:0;color:var(--txt);font-size:15px;min-width:0}
-.linkbar input::placeholder{color:var(--mut)}
-.gobtn{background:var(--white);color:#111;border:0;border-radius:30px;padding:13px 28px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.15s}
-.gobtn:hover{transform:scale(1.03)}
-.srctabs{display:flex;justify-content:center;gap:22px;margin:18px 0 8px;font-size:13px;color:var(--mut)}
-.srctabs button{background:none;border:0;color:var(--mut);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 4px}
-.srctabs button:hover{color:var(--txt)}
-.srctabs .u{color:var(--acc)}
-#file{display:none}
-.hintline{text-align:center;color:var(--mut);font-size:13px;margin-bottom:26px;min-height:20px}
-/* feature pills */
-.feats{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:60px;max-width:820px;margin-left:auto;margin-right:auto}
-.feat{border:1px solid var(--border);background:var(--card);color:var(--txt);border-radius:24px;padding:10px 18px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;cursor:default;position:relative}
-.feat .beta{font-size:9px;background:var(--acc);color:#fff;border-radius:8px;padding:2px 6px;font-weight:700}
-.feat .dot{position:absolute;top:8px;right:10px;width:7px;height:7px;border-radius:50%;background:#ef4444}
-h2.sec{font-size:16px;font-weight:700;margin:0 0 18px;color:var(--txt)}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
-.dcard{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;cursor:pointer;transition:.2s}
-.dcard:hover{transform:translateY(-3px);border-color:var(--acc)}
-.dcard .th{aspect-ratio:16/9;background:linear-gradient(135deg,#2b2b40,#16161e);display:flex;align-items:center;justify-content:center;font-size:40px;position:relative}
-.dcard .th .pl{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;font-size:20px;color:#111}
-.dcard .bd{padding:14px}
-.dcard .bd b{font-size:14px;display:block;line-height:1.4}
-.dcard .bd span{font-size:12px;color:var(--mut)}
-.learn{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;margin-top:18px}
-.lcard{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden}
-.lcard .th{aspect-ratio:16/9;background:linear-gradient(135deg,#1e1b3a,#0a0a0f);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;text-align:center;padding:0 20px;line-height:1.4}
-@media(max-width:640px){.side{display:none}.linkbar{flex-direction:column;border-radius:24px;padding:14px}.gobtn{width:100%}}
-</style></head>
-<body>
-<nav class="side">
-<a href="/dashboard" class="on" title="Home">⌂</a>
-<a href="/jobs" title="My projects">▦</a>
-<a href="/jobs" title="Calendar">▤</a>
-<a href="/jobs" title="Analytics">◔</a>
-<div class="sp"></div>
-<a href="/jobs" title="Help">?</a>
-</nav>
-<div class="main">
-<div class="toprow">
-<a class="pillbtn" href="/jobs">📁 My Projects</a>
-</div>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JpClips — Turn long videos into scroll-stopping clips</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter & Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,800;0,900;1,900&display=swap" rel="stylesheet">
+  <!-- JSZip & FileSaver for automatic source code export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              lime: '#b9f36b',
+              limeDark: '#9de043',
+              dark: '#0a0a0f',
+              card: '#12121c',
+              border: '#1f1f30',
+              accent: '#ff6b00'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Montserrat', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      background-color: #0a0a0f;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f1f30;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #b9f36b;
+    }
 
-<form action="/workflow" method="post" enctype="multipart/form-data" id="f">
-<div class="linkbar">
-<span class="lk">🔗</span>
-<input type="text" name="youtube_url" id="yt" placeholder="Drop a YouTube link" autocomplete="off">
-<button class="gobtn" type="submit">Get clips in 1 click</button>
-</div>
-<div class="srctabs">
-<button type="button" onclick="document.getElementById('file').click()"><span class="u">📁</span> Upload</button>
-<button type="button" onclick="alert('Google Drive coming soon — upload the file directly for now')">🔵 Google Drive</button>
-<button type="button" onclick="sample()">Try a sample project</button>
-</div>
-<input type="file" id="file" name="video" accept="video/*" onchange="if(this.files.length)this.form.submit()">
-<div class="hintline" id="hint"></div>
-</form>
+    .lime-glow {
+      box-shadow: 0 0 25px rgba(185, 243, 107, 0.25);
+    }
+    .lime-glow-sm {
+      box-shadow: 0 0 12px rgba(185, 243, 107, 0.2);
+    }
+    
+    /* Glassmorphism */
+    .glass-panel {
+      background: rgba(18, 18, 28, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    
+    /* Caption Animations */
+    @keyframes popIn {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .caption-word-active {
+      animation: popIn 0.15s ease-out forwards;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<header class="sticky top-0 z-50 glass-panel border-b border-brand-border/60 px-4 lg:px-8 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-2.5 group">
+        <div class="w-10 h-10 rounded-xl bg-brand-lime flex items-center justify-center text-black font-extrabold text-xl shadow-lg shadow-brand-lime/20 group-hover:scale-105 transition-transform">
+          <i class="fa-solid font-bold fa-bolt text-lg"></i>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xl font-black tracking-tight text-white flex items-center gap-1">
+            Jp<span class="text-brand-lime">Clips</span>
+            <span class="text-[10px] bg-brand-lime/10 text-brand-lime border border-brand-lime/30 px-1.5 py-0.5 rounded font-mono font-semibold">PRO v2.6</span>
+          </span>
+          <span class="text-[10px] text-gray-400 -mt-1 tracking-wider uppercase">OpusClip-Quality AI</span>
+        </div>
+      </a>
 
-<div class="feats">
-<span class="feat">🎬 Long to shorts</span>
-<span class="feat">✂️ Edit video</span>
-<span class="feat">💬 AI Captions</span>
-<span class="feat">🤖 AI B-roll <span class="dot"></span></span>
-<span class="feat">🖼️ AI Reframe</span>
-<span class="feat">🔊 Auto SFX <span class="dot"></span></span>
-<span class="feat">⬆️ Upscale <span class="dot"></span></span>
-<span class="feat">🗣️ Voice dubbing <span class="dot"></span></span>
-<span class="feat">🎙️ Enhance speech</span>
-</div>
+      <!-- Center Navigation Links -->
+      <nav class="hidden md:flex items-center gap-1 bg-[#0f0f18] p-1 rounded-xl border border-brand-border">
+        <a href="/" id="nav-landing" 
+          <i class="fa-solid fa-house mr-2 text-xs"></i>Home
+        </a>
+        <a href="/dashboard" id="nav-workflow" 
+          <i class="fa-solid fa-wand-magic-sparkles mr-2 text-xs text-brand-lime"></i>New Clip
+        </a>
+        <a href="/jobs" id="nav-jobs" 
+          <i class="fa-solid fa-layer-group mr-2 text-xs"></i>My Projects
+        </a>
+        
+      </nav>
 
-<h2 class="sec">Start from a demo project</h2>
-<div class="cards">
-<div class="dcard" onclick="sample()"><div class="th">🎙️<span class="pl">▶</span></div><div class="bd"><b>Podcast Highlights — Tech Talk #42</b><span>18 clips</span></div></div>
-<div class="dcard" onclick="sample()"><div class="th">🏀<span class="pl">▶</span></div><div class="bd"><b>Game Analysis — Top Plays</b><span>12 clips</span></div></div>
-<div class="dcard" onclick="sample()"><div class="th">🎸<span class="pl">▶</span></div><div class="bd"><b>Music Interview #408</b><span>25 clips</span></div></div>
-</div>
+      <!-- Right CTAs -->
+      <div class="flex items-center gap-3">
+        <button onclick="downloadSourceZip()" class="hidden sm:flex items-center gap-2 bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-lime border border-brand-lime/40 px-3.5 py-2 rounded-xl text-xs font-bold transition-all">
+          <i class="fa-solid fa-file-zipper text-sm"></i>
+          <span>Download Backend ZIP</span>
+        </a>
+        <button onclick="switchView('workflow')" class="bg-brand-lime hover:bg-brand-limeDark text-black font-extrabold px-4 py-2 rounded-xl text-sm transition-all transform hover:scale-[1.02] shadow-md shadow-brand-lime/20 flex items-center gap-2">
+          <span>Create Clips</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+<main class="flex-1 max-w-7xl mx-auto w-full px-4 lg:px-8 py-8">
+<section id="view-landing" class="space-y-16">
+      
+      <!-- Hero Section -->
+      <div class="text-center max-w-4xl mx-auto pt-6 pb-4 space-y-6">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-lime/10 border border-brand-lime/30 text-brand-lime text-xs font-bold tracking-wide uppercase">
+          <i class="fa-solid fa-fire text-xs"></i>
+          <span>OpusClip Quality Face Tracking & Karaoke AI</span>
+        </div>
 
-<h2 class="sec" style="margin-top:44px">Recent projects</h2>
-<div class="cards" id="recent"><div class="dcard"><div class="bd"><span>Loading…</span></div></div></div>
+        <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1]">
+          Turn long videos into <br class=" sm:inline"/></br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-lime via-emerald-300 to-teal-200">scroll-stopping clips.</span>
+        </h1>
 
-<h2 class="sec" style="margin-top:44px">Master JpClips</h2>
-<div class="learn">
-<div class="lcard"><div class="th">Turn Any Video<br>Into Viral Shorts</div></div>
-<div class="lcard"><div class="th">5 Top Features<br>You Didn't Know</div></div>
-<div class="lcard"><div class="th">Make 40<br>YouTube Shorts</div></div>
-<div class="lcard"><div class="th">Edit Faster with<br>Keyboard</div></div>
-</div>
-</div>
+        <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto font-normal">
+          AI detects harsh viral moments (75+ score), tracks speakers with YuNet face tracking, adds animated karaoke captions, and renders 9:16 video in seconds.
+        </p>
+
+        <!-- Quick URL Input Form -->
+        <div class="max-w-2xl mx-auto glass-panel p-2.5 rounded-2xl border border-brand-border shadow-2xl lime-glow-sm">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <div class="relative flex-1">
+              <i class="fa-brands fa-youtube absolute left-4 top-1/2 -translate-y-1/2 text-red-500 text-lg"></i>
+              <input type="text" id="landing-url-input" placeholder="Paste YouTube video URL or podcast link..." 
+                class="w-full bg-[#0a0a0f] text-white placeholder-gray-500 pl-11 pr-4 py-3.5 rounded-xl border border-brand-border focus:border-brand-lime focus:outline-none text-sm transition-colors"
+                value="https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+            </div>
+            <button onclick="startFromLanding()" class="bg-brand-lime hover:bg-brand-limeDark text-black font-black px-6 py-3.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-brand-lime/20">
+              <span>Get clips in 1 click</span>
+              <i class="fa-solid fa-bolt"></i>
+            </button>
+          </div>
+          <!-- Upload options row -->
+          <div class="flex items-center justify-between text-xs text-gray-400 pt-2.5 px-2">
+            <span class="flex items-center gap-1.5 hover:text-white cursor-pointer" onclick="window.location='/dashboard'">
+              <i class="fa-solid fa-cloud-arrow-up text-brand-lime"></i> Upload MP4/MOV file
+            </span>
+            <span class="flex items-center gap-1.5 hover:text-white cursor-pointer" onclick="window.location='/dashboard'">
+              <i class="fa-brands fa-google-drive text-blue-400"></i> Import from Drive
+            </span>
+            <span class="flex items-center gap-1.5 hover:text-brand-lime cursor-pointer font-semibold" onclick="loadSampleVideo()">
+              <i class="fa-solid fa-play text-xs"></i> Try Sample Podcast
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Chips Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-crop text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">Long to Shorts</p>
+        </div>
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-face-smile text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">YuNet Tracking</p>
+        </div>
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-closed-captioning text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">Karaoke Captions</p>
+        </div>
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-chart-line text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">Virality Scoring</p>
+        </div>
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-users text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">Split/Grid Layouts</p>
+        </div>
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-scissors text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">Scene Cut Detect</p>
+        </div>
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-microchip text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">Groq/OpenAI LLM</p>
+        </div>
+        <div class="p-3 rounded-xl bg-brand-card/80 border border-brand-border text-center space-y-1">
+          <i class="fa-solid fa-download text-brand-lime text-lg"></i>
+          <p class="text-xs font-bold text-gray-200">Instant Export</p>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 rounded-2xl bg-gradient-to-r from-brand-card via-[#161625] to-brand-card border border-brand-border">
+        <div class="text-center space-y-1">
+          <p class="text-3xl font-black text-white">100M+</p>
+          <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Viral Views Generated</p>
+        </div>
+        <div class="text-center space-y-1 border-l border-brand-border">
+          <p class="text-3xl font-black text-brand-lime">75/100</p>
+          <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Strict Virality Threshold</p>
+        </div>
+        <div class="text-center space-y-1 border-l border-brand-border">
+          <p class="text-3xl font-black text-white">9:16</p>
+          <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Auto Smart Reframing</p>
+        </div>
+        <div class="text-center space-y-1 border-l border-brand-border">
+          <p class="text-3xl font-black text-emerald-400">FREE</p>
+          <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Groq Whisper & Llama Tier</p>
+        </div>
+      </div>
+
+      <!-- Demo Viral Moments Preview Gallery -->
+      <div class="space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-extrabold text-white">Sample Viral Clips Generated by AI</h2>
+            <p class="text-sm text-gray-400">Harsh viral selection rule removes boring segments automatically.</p>
+          </div>
+          <button onclick="window.location='/dashboard'" class="text-brand-lime hover:underline text-sm font-bold flex items-center gap-1">
+            <span>Try with your video</span> <i class="fa-solid fa-chevron-right text-xs"></i>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- Sample Clip Card 1 -->
+          <div class="bg-brand-card rounded-2xl border border-brand-border overflow-hidden group hover:border-brand-lime/50 transition-all flex flex-col">
+            <!-- Simulated Vertical Player -->
+            <div class="relative aspect-[9/16] bg-black overflow-hidden flex items-center justify-center group-hover:scale-[1.01] transition-transform">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover opacity-80" alt="Podcast Clip Preview">
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"></div>
+              
+              <!-- Virality Badge Overlay -->
+              <div class="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-brand-lime/40 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-brand-lime animate-pulse"></span>
+                <span class="text-xs font-black text-brand-lime">SCORE 96</span>
+              </div>
+
+              <!-- Animated Subtitles Overlay Simulation -->
+              <div class="absolute bottom-12 left-4 right-4 text-center">
+                <p class="font-display font-black text-xl uppercase tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] bg-black/60 p-2 rounded-lg border border-white/10">
+                  "<span class="text-brand-lime underline decoration-4">NEVER</span> DO THIS WITH YOUR MONEY!"
+                </p>
+              </div>
+
+              <!-- Play Button -->
+              <button onclick="playDemoClip('clip1')" class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
+                <div class="w-14 h-14 rounded-full bg-brand-lime text-black flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-play text-xl ml-1"></i>
+                </div>
+              </button>
+            </div>
+
+            <!-- Card Info -->
+            <div class="p-4 space-y-3 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+                  <span><i class="fa-regular fa-clock mr-1"></i>0:34</span>
+                  <span class="text-emerald-400 font-bold">1M+ View Potential</span>
+                </div>
+                <h3 class="font-bold text-white text-base line-clamp-1">The $10M Investment Mistake</h3>
+                <p class="text-xs text-gray-400 line-clamp-2 mt-1">"If you are putting money in savings accounts in 2026, you are guaranteed to lose..."</p>
+              </div>
+
+              <!-- Sub-scores -->
+              <div class="space-y-1.5 pt-2 border-t border-brand-border text-xs">
+                <div class="flex justify-between items-center text-gray-400">
+                  <span>Hook (First 3s)</span>
+                  <span class="font-bold text-white">25/25</span>
+                </div>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-brand-lime h-full" style="width: 100%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sample Clip Card 2 -->
+          <div class="bg-brand-card rounded-2xl border border-brand-border overflow-hidden group hover:border-brand-lime/50 transition-all flex flex-col">
+            <div class="relative aspect-[9/16] bg-black overflow-hidden flex items-center justify-center">
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover opacity-80" alt="Podcast Clip Preview">
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"></div>
+              
+              <div class="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-brand-lime/40 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-brand-lime animate-pulse"></span>
+                <span class="text-xs font-black text-brand-lime">SCORE 91</span>
+              </div>
+
+              <div class="absolute bottom-12 left-4 right-4 text-center">
+                <p class="font-display font-black text-xl uppercase tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] bg-black/60 p-2 rounded-lg border border-white/10">
+                  "THIS IS WHY <span class="text-yellow-400">AI WILL REPLACE</span> 80% WORK"
+                </p>
+              </div>
+
+              <button onclick="playDemoClip('clip2')" class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
+                <div class="w-14 h-14 rounded-full bg-brand-lime text-black flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-play text-xl ml-1"></i>
+                </div>
+              </button>
+            </div>
+
+            <div class="p-4 space-y-3 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+                  <span><i class="fa-regular fa-clock mr-1"></i>0:42</span>
+                  <span class="text-emerald-400 font-bold">High Viral Flow</span>
+                </div>
+                <h3 class="font-bold text-white text-base line-clamp-1">AI Brutal Reality Check</h3>
+                <p class="text-xs text-gray-400 line-clamp-2 mt-1">"People aren't ready for what happens next month when autonomous agents roll out..."</p>
+              </div>
+
+              <div class="space-y-1.5 pt-2 border-t border-brand-border text-xs">
+                <div class="flex justify-between items-center text-gray-400">
+                  <span>Hook (First 3s)</span>
+                  <span class="font-bold text-white">23/25</span>
+                </div>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-brand-lime h-full" style="width: 92%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sample Clip Card 3 -->
+          <div class="bg-brand-card rounded-2xl border border-brand-border overflow-hidden group hover:border-brand-lime/50 transition-all flex flex-col">
+            <div class="relative aspect-[9/16] bg-black overflow-hidden flex items-center justify-center">
+              <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover opacity-80" alt="Podcast Clip Preview">
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"></div>
+              
+              <div class="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-brand-lime/40 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-brand-lime animate-pulse"></span>
+                <span class="text-xs font-black text-brand-lime">SCORE 88</span>
+              </div>
+
+              <div class="absolute bottom-12 left-4 right-4 text-center">
+                <p class="font-display font-black text-xl uppercase tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] bg-black/60 p-2 rounded-lg border border-white/10">
+                  "THE 1 HABIT THAT <span class="text-brand-accent">CHANGED EVERYTHING</span>"
+                </p>
+              </div>
+
+              <button onclick="playDemoClip('clip3')" class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
+                <div class="w-14 h-14 rounded-full bg-brand-lime text-black flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-play text-xl ml-1"></i>
+                </div>
+              </button>
+            </div>
+
+            <div class="p-4 space-y-3 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+                  <span><i class="fa-regular fa-clock mr-1"></i>0:28</span>
+                  <span class="text-emerald-400 font-bold">Strong Value</span>
+                </div>
+                <h3 class="font-bold text-white text-base line-clamp-1">Secret Productivity Hack</h3>
+                <p class="text-xs text-gray-400 line-clamp-2 mt-1">"I spent 10 years working 80 hour weeks until I realized this single routine..."</p>
+              </div>
+
+              <div class="space-y-1.5 pt-2 border-t border-brand-border text-xs">
+                <div class="flex justify-between items-center text-gray-400">
+                  <span>Hook (First 3s)</span>
+                  <span class="font-bold text-white">22/25</span>
+                </div>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-brand-lime h-full" style="width: 88%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ================= 2. WORKFLOW & CONFIGURATION VIEW ================= -->
+    
+</main>
+<footer class="border-t border-brand-border/60 bg-[#07070b] py-8 px-4 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-white">JpClips AI</span>
+        <span>•</span>
+        <span>Built with Groq Whisper & Llama 3.3, YuNet OpenCV, and FFmpeg</span>
+      </div>
+      <div class="flex items-center gap-4">
+        
+        <a href="/" class="hover:text-white">Home</a>
+        <a href="/dashboard" class="hover:text-white">Create Clips</a>
+      </div>
+    </div>
+  </footer>
+
 <script>
-document.getElementById('f').addEventListener('submit',ev=>{
-  const yt=document.getElementById('yt').value.trim();
-  if(!yt){ev.preventDefault();document.getElementById('hint').textContent='Paste a YouTube link above, or click Upload to choose a file';}
-  else{document.getElementById('hint').textContent='⏳ Loading video…';}
-});
-function sample(){document.getElementById('hint').textContent='Upload your own video to get started — samples coming soon';}
-async function recent(){
-  try{
-    const r=await fetch("/api/jobs"); const j=await r.json();
-    const box=document.getElementById('recent');
-    const items=(j.jobs||[]).slice(0,3);
-    if(!items.length){box.innerHTML='<div class="dcard"><div class="bd"><b>No projects yet</b><span>Paste a link above to start</span></div></div>';return;}
-    const dot={done:"🟢",running:"🟣",queued:"🟡",error:"🔴"};
-    box.innerHTML=items.map(x=>{
-      const st=x.status||"queued";
-      const info=st==="done"?`${x.nclips} clips` : st==="running"?`${x.progress||0}% · ${esc(x.step||"")}` : st;
-      return `<div class="dcard" onclick="location.href='/job/${x.jid}'"><div class="th">${dot[st]||"⚪"}<span class="pl">▶</span></div><div class="bd"><b>${esc(x.name)}</b><span>${esc(info)}</span></div></div>`;
-    }).join("");
-  }catch(e){}
-}
-recent();
-</script></body></html>
+(function(){
+  var path = window.location.pathname;
+  var id = null;
+  if (path === '/' ) id = 'nav-landing';
+  else if (path === '/dashboard' || path === '/workflow') id = 'nav-workflow';
+  else if (path === '/jobs' || path.indexOf('/job') === 0) id = 'nav-jobs';
+  if (id) {
+    var el = document.getElementById(id);
+    if (el) { el.classList.remove('text-gray-400'); el.classList.add('text-white','bg-brand-border/60'); }
+  }
+  // Fix nav links: ensure they're <a> tags with href
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    if (b.tagName === 'BUTTON') {
+      var a = document.createElement('a');
+      a.className = b.className; a.id = b.id; a.innerHTML = b.innerHTML;
+      if (b.id === 'nav-landing') a.href = '/';
+      else if (b.id === 'nav-workflow') a.href = '/dashboard';
+      else if (b.id === 'nav-jobs') a.href = '/jobs';
+      b.parentNode.replaceChild(a, b);
+    }
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  // Wire URL input to POST /workflow
+  var urlInput = document.getElementById('landing-url-input');
+  if (urlInput) {
+    urlInput.setAttribute('name', 'youtube_url');
+    // Find the CTA button near it and wrap in form
+    var section = urlInput.closest('section') || urlInput.closest('div');
+    var form = document.createElement('form');
+    form.action = '/workflow'; form.method = 'POST';
+    urlInput.parentNode.insertBefore(form, urlInput);
+    form.appendChild(urlInput);
+    // Find submit button
+    var btn = form.parentNode.querySelector('button');
+    if (btn && /clip/i.test(btn.textContent)) { btn.type = 'submit'; form.appendChild(btn); }
+  }
+  // Wire file input
+  var fi = document.getElementById('video-file-input');
+  if (fi) {
+    fi.addEventListener('change', function(){
+      if (!this.files.length) return;
+      var fd = new FormData(); fd.append('video', this.files[0]);
+      fetch('/workflow', {method:'POST', body:fd})
+        .then(r => r.text()).then(t => { document.open(); document.write(t); document.close(); });
+    });
+  }
+  // Load recent jobs
+  fetch('/api/jobs').then(r=>r.json()).then(function(d){
+    var jobs = (d.jobs||[]).slice(0,3);
+    if (!jobs.length) return;
+    var sec = document.createElement('section');
+    sec.className = 'mt-12';
+    sec.innerHTML = '<h2 class="text-2xl font-black text-white mb-4">Recent Projects</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="recent-grid"></div>';
+    document.querySelector('main').appendChild(sec);
+    var grid = document.getElementById('recent-grid');
+    jobs.forEach(function(j){
+      var a = document.createElement('a');
+      a.href = '/job/'+j.id;
+      a.className = 'bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-lime/50';
+      a.innerHTML = '<div class="font-bold text-white text-sm truncate">'+(j.name||j.id)+'</div>'+
+        '<div class="text-xs text-gray-500 mt-1">'+(j.status||'')+'</div>'+
+        (j.top_score?'<div class="text-brand-lime font-mono text-sm mt-1">⚡ '+j.top_score+'</div>':'');
+      grid.appendChild(a);
+    });
+  }).catch(function(){});
+})();
+</script>
+
+</body>
+</html>
