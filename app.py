@@ -209,6 +209,7 @@ def start():
         "provider": request.form.get("provider", "openai"),
         "groq_key": request.form.get("groq_key", "").strip(),
         "openai_key": request.form.get("openai_key", "").strip(),
+        "gemini_key": request.form.get("gemini_key", "").strip(),
         "n_clips": int(request.form.get("n_clips", 3)),
         "min_len": int(request.form.get("min_len", _lo)),
         "max_len": int(request.form.get("max_len", _hi)),
