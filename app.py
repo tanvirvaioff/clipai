@@ -3,7 +3,7 @@
 """ClipAI — OpusClip-style AI clipping web app."""
 import os, json, uuid, threading, time
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, request, render_template, jsonify, send_from_directory, redirect, url_for
+from flask import Flask, request, render_template, jsonify, send_from_directory, send_file, redirect, url_for
 from werkzeug.utils import secure_filename
 import pipeline
 
@@ -139,7 +139,8 @@ def job_worker(jid):
 
 @app.route("/")
 def index():
-    return render_template("landing.html")
+    # landing.html is a static SPA (contains {{ }} JS) — serve raw, not via Jinja
+    return send_file(os.path.join(BASE, "templates", "landing.html"))
 
 @app.route("/dashboard")
 def dashboard():
