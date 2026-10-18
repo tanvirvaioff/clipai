@@ -321,9 +321,14 @@ def api_jobs():
             meta = _read_meta(jid)
             st = _read_status(jid) or JOBS_STATE.get(jid, {"status": "unknown"})
             try:
-                nclips = len(st.get("result") or [])
+                res = st.get("result") or []
+                nclips = len(res)
+                thumb = res[0].get("file", "") if res else ""
+                top_score = max((c.get("score", 0) for c in res), default=0)
             except Exception:
                 nclips = 0
+                thumb = ""
+                top_score = 0
             items.append({
                 "jid": jid,
                 "name": meta.get("name") or jid,
@@ -334,6 +339,8 @@ def api_jobs():
                 "step": st.get("step", ""),
                 "nclips": nclips,
                 "error": st.get("error", ""),
+                "thumb": thumb,
+                "top_score": top_score,
             })
     items.sort(key=lambda x: -x["created"])
     return jsonify({"jobs": items})
