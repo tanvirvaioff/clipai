@@ -1,724 +1,80 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JpClips — Turn long videos into scroll-stopping clips</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts: Inter & Montserrat -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,800;0,900;1,900&display=swap" rel="stylesheet">
-  <!-- JSZip & FileSaver for automatic source code export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              lime: '#b9f36b',
-              limeDark: '#9de043',
-              dark: '#0a0a0f',
-              card: '#12121c',
-              border: '#1f1f30',
-              accent: '#ff6b00'
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            display: ['Montserrat', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
-  
-  <style>
-    body {
-      background-color: #0a0a0f;
-      color: #f3f4f6;
-      font-family: 'Inter', sans-serif;
-    }
-    
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #0a0a0f;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1f1f30;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #b9f36b;
-    }
+{% extends "base.html" %}
+{% set active = 'history' %}
+{% block title %}JpClips — your library{% endblock %}
 
-    .lime-glow {
-      box-shadow: 0 0 25px rgba(185, 243, 107, 0.25);
-    }
-    .lime-glow-sm {
-      box-shadow: 0 0 12px rgba(185, 243, 107, 0.2);
-    }
-    
-    /* Glassmorphism */
-    .glass-panel {
-      background: rgba(18, 18, 28, 0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-    }
-    
-    /* Caption Animations */
-    @keyframes popIn {
-      0% { transform: scale(0.85); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .caption-word-active {
-      animation: popIn 0.15s ease-out forwards;
-      display: inline-block;
-    }
-  </style>
-</head>
-<body class="min-h-screen flex flex-col">
-<header class="sticky top-0 z-50 glass-panel border-b border-brand-border/60 px-4 lg:px-8 py-3.5">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-      <!-- Logo -->
-      <a href="/" class="flex items-center gap-2.5 group">
-        <div class="w-10 h-10 rounded-xl bg-brand-lime flex items-center justify-center text-black font-extrabold text-xl shadow-lg shadow-brand-lime/20 group-hover:scale-105 transition-transform">
-          <i class="fa-solid font-bold fa-bolt text-lg"></i>
-        </div>
-        <div class="flex flex-col">
-          <span class="text-xl font-black tracking-tight text-white flex items-center gap-1">
-            Jp<span class="text-brand-lime">Clips</span>
-            <span class="text-[10px] bg-brand-lime/10 text-brand-lime border border-brand-lime/30 px-1.5 py-0.5 rounded font-mono font-semibold">PRO v2.6</span>
-          </span>
-          <span class="text-[10px] text-gray-400 -mt-1 tracking-wider uppercase">OpusClip-Quality AI</span>
-        </div>
-      </a>
+{% block content %}
+<div class="max-w-[1200px] mx-auto px-6 py-12">
+  <div class="eyebrow mb-3">07 · history</div>
+  <div class="flex items-end justify-between flex-wrap gap-3 mb-2">
+    <h1 class="serif-heading text-[44px] text-white">your library</h1>
+    <a href="/dashboard" class="flex items-center gap-2 text-[12.5px] font-semibold text-os-muted hover:text-white border border-os-border rounded-full px-4 py-2 transition-colors">
+      <i class="fa-solid fa-folder-open text-[11px]"></i> reopen project
+    </a>
+  </div>
+  <p class="text-os-muted text-[14px] mb-8">all the shorts you've generated, saved on your server. reopen a project to keep editing its clips.</p>
 
-      <!-- Center Navigation Links -->
-      <nav class="hidden md:flex items-center gap-1 bg-[#0f0f18] p-1 rounded-xl border border-brand-border">
-        <a href="/" id="nav-landing" 
-          <i class="fa-solid fa-house mr-2 text-xs"></i>Home
-        </a>
-        <a href="/dashboard" id="nav-workflow" 
-          <i class="fa-solid fa-wand-magic-sparkles mr-2 text-xs text-brand-lime"></i>New Clip
-        </a>
-        <a href="/jobs" id="nav-jobs" 
-          <i class="fa-solid fa-layer-group mr-2 text-xs"></i>My Projects
-        </a>
-        
-      </nav>
-
-      <!-- Right CTAs -->
-      <div class="flex items-center gap-3">
-        <button onclick="downloadSourceZip()" class="hidden sm:flex items-center gap-2 bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-lime border border-brand-lime/40 px-3.5 py-2 rounded-xl text-xs font-bold transition-all">
-          <i class="fa-solid fa-file-zipper text-sm"></i>
-          <span>Download Backend ZIP</span>
-        </a>
-        <button onclick="switchView('workflow')" class="bg-brand-lime hover:bg-brand-limeDark text-black font-extrabold px-4 py-2 rounded-xl text-sm transition-all transform hover:scale-[1.02] shadow-md shadow-brand-lime/20 flex items-center gap-2">
-          <span>Create Clips</span>
-          <i class="fa-solid fa-arrow-right text-xs"></i>
-        </a>
-      </div>
+  <div id="empty" class="hidden text-center py-20">
+    <div class="w-14 h-14 mx-auto rounded-2xl bg-os-card border border-os-border flex items-center justify-center mb-5">
+      <i class="fa-solid fa-clapperboard text-os-orange text-xl"></i>
     </div>
-  </header>
-<main class="flex-1 max-w-7xl mx-auto w-full px-4 lg:px-8 py-8">
-<section id="view-jobs" class=" space-y-8">
-      
-      <div class="flex items-center justify-between border-b border-brand-border pb-6">
-        <div>
-          <h1 class="text-3xl font-black text-white">Project Dashboard</h1>
-          <p class="text-sm text-gray-400 mt-1">Manage all previous AI clipping tasks and downloads.</p>
-        </div>
-        <button onclick="window.location='/dashboard'" class="bg-brand-lime hover:bg-brand-limeDark text-black font-extrabold text-sm px-4 py-2.5 rounded-xl transition-all shadow-md shadow-brand-lime/20 flex items-center gap-2">
-          <i class="fa-solid fa-plus"></i> New Clip
-        </button>
-      </div>
-
-      <!-- Project List Table / Grid -->
-      <div class="space-y-4">
-        
-        <div class="bg-brand-card p-5 rounded-2xl border border-brand-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex items-center gap-4">
-            <div class="w-16 h-12 bg-black rounded-xl overflow-hidden border border-brand-border shrink-0">
-              <img src="https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover" alt="Thumb">
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="font-bold text-white text-base">Lex Fridman Podcast #410</h3>
-                <span class="bg-emerald-500/20 text-emerald-400 text-[10px] border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">COMPLETED</span>
-              </div>
-              <p class="text-xs text-gray-400 mt-0.5">3 Viral Clips generated • Processed 10 mins ago • Groq Whisper + Llama 3.3</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <div class="text-right hidden sm:block pr-2">
-              <p class="text-xs font-bold text-brand-lime">Top Virality: 95/100</p>
-              <p class="text-[11px] text-gray-500">Hormozi 1 Theme</p>
-            </div>
-            <button onclick="switchView('results')" class="bg-brand-border hover:bg-brand-border/80 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
-              View Clips
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-brand-card p-5 rounded-2xl border border-brand-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex items-center gap-4">
-            <div class="w-16 h-12 bg-black rounded-xl overflow-hidden border border-brand-border shrink-0">
-              <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover" alt="Thumb">
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="font-bold text-white text-base">Sam Altman Tech Keynote 2026</h3>
-                <span class="bg-emerald-500/20 text-emerald-400 text-[10px] border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">COMPLETED</span>
-              </div>
-              <p class="text-xs text-gray-400 mt-0.5">5 Viral Clips generated • Processed yesterday • OpenAI GPT-4o</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <div class="text-right hidden sm:block pr-2">
-              <p class="text-xs font-bold text-brand-lime">Top Virality: 92/100</p>
-              <p class="text-[11px] text-gray-500">Leon Theme</p>
-            </div>
-            <button onclick="switchView('results')" class="bg-brand-border hover:bg-brand-border/80 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
-              View Clips
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-    </section>
-
-  </main>
-
-
-  <!-- ================= SOURCE CODE DOWNLOAD MODAL ================= -->
-  <div id="source-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-    <div class="bg-brand-card max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-brand-border space-y-6 lime-glow-sm relative">
-      <button onclick="closeSourceCodeModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white text-lg">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-2xl bg-brand-lime/10 text-brand-lime flex items-center justify-center text-xl font-bold">
-          <i class="fa-solid fa-file-zipper"></i>
-        </div>
-        <div>
-          <h2 class="text-xl font-extrabold text-white">Full Backend Source Code Exporter</h2>
-          <p class="text-xs text-gray-400">Download ready-to-run Python Flask/FastAPI, YuNet Face Tracker, & FFmpeg Engine.</p>
-        </div>
-      </div>
-
-      <div class="bg-[#0a0a0f] p-4 rounded-2xl border border-brand-border text-xs space-y-2 text-gray-300 font-mono">
-        <p class="text-brand-lime font-bold">// Complete Backend Bundle Contents:</p>
-        <p class="pl-2">📁 jpclips_backend/</p>
-        <p class="pl-6 text-gray-400">├── app.py <span class="text-emerald-400">(Flask Server API & Groq/Whisper routes)</span></p>
-        <p class="pl-6 text-gray-400">├── face_tracker.py <span class="text-emerald-400">(OpenCV YuNet + Scene cut HSV detection)</span></p>
-        <p class="pl-6 text-gray-400">├── moment_selector.py <span class="text-emerald-400">(LLM Viral prompt engine - score > 75)</span></p>
-        <p class="pl-6 text-gray-400">├── subtitle_generator.py <span class="text-emerald-400">(ASS Karaoke generator with 6 styles)</span></p>
-        <p class="pl-6 text-gray-400">├── Dockerfile <span class="text-emerald-400">(Python 3.12-slim + FFmpeg + Montserrat font)</span></p>
-        <p class="pl-6 text-gray-400">└── requirements.txt <span class="text-emerald-400">(groq, openai, opencv-python, yt-dlp)</span></p>
-      </div>
-
-      <div class="flex flex-col sm:flex-row items-center gap-3">
-        <button onclick="downloadSourceZip()" class="w-full bg-brand-lime hover:bg-brand-limeDark text-black font-black py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-brand-lime/20 flex items-center justify-center gap-2">
-          <i class="fa-solid fa-download"></i>
-          <span>Download Backend ZIP Archive (.zip)</span>
-        </button>
-      </div>
-    </div>
+    <div class="text-white font-semibold text-[16px] mb-2">No projects yet</div>
+    <div class="text-os-muted text-[13.5px] mb-6">Generate your first clips and they'll show up here.</div>
+    <a href="/dashboard" class="btn-orange rounded-full px-6 py-3 text-[14px] inline-block">create viral shorts</a>
   </div>
 
+  <div id="projects" class="space-y-10"></div>
+</div>
+{% endblock %}
 
-  <!-- ================= FOOTER ================= -->
-  <footer class="border-t border-brand-border/60 bg-[#07070b] py-8 px-4 mt-auto">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-white">JpClips AI</span>
-        <span>•</span>
-        <span>Built with Groq Whisper & Llama 3.3, YuNet OpenCV, and FFmpeg</span>
-      </div>
-      <div class="flex items-center gap-4">
-        <button onclick="downloadSourceZip()" class="hover:text-brand-lime">
-          <i class="fa-solid fa-code mr-1"></i>Export Source Code
-        </button>
-        <a href="#" onclick="window.location='/'" class="hover:text-white">Home</a>
-        <a href="#" onclick="window.location='/dashboard'" class="hover:text-white">Create Clips</a>
-      </div>
-    </div>
-  </footer>
-
-
-  <!-- ================= JAVASCRIPT APP INTERACTION LOGIC ================= -->
-  <script>
-{% raw %}
-    // Selected Caption Preset State
-    let activePreset = 'hormozi1';
-
-    // Switch active view screens dynamically
-    function switchView(viewName) {
-      const views = ['landing', 'workflow', 'processing', 'results', 'jobs'];
-      views.forEach(v => {
-        const el = document.getElementById(`view-${v}`);
-        if (el) el.classList.add('hidden');
-      });
-
-      const target = document.getElementById(`view-${viewName}`);
-      if (target) target.classList.remove('hidden');
-
-      // Update Top Nav Button Active States
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('bg-brand-border/60', 'text-white');
-        btn.classList.add('text-gray-400');
-      });
-
-      const activeNavBtn = document.getElementById(`nav-${viewName}`);
-      if (activeNavBtn) {
-        activeNavBtn.classList.add('bg-brand-border/60', 'text-white');
-        activeNavBtn.classList.remove('text-gray-400');
-      }
-
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // Quick Start from Landing Input
-    function startFromLanding() {
-      const url = document.getElementById('landing-url-input').value;
-      if (url) {
-        document.getElementById('workflow-url-input').value = url;
-      }
-      switchView('workflow');
-    }
-
-    // Load Sample Video Details
-    function loadSampleVideo() {
-      document.getElementById('workflow-url-input').value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-      document.getElementById('preview-title').innerText = 'Lex Fridman Podcast #410 — AI & Robotics Future with Elon Musk';
-      document.getElementById('video-preview-card').classList.add('lime-glow-sm');
-      switchView('workflow');
-    }
-
-    // Caption Preset Selector
-    function selectPreset(presetId) {
-      activePreset = presetId;
-      document.querySelectorAll('.caption-preset-btn').forEach(btn => {
-        btn.classList.remove('border-2', 'border-brand-lime');
-        btn.classList.add('border', 'border-brand-border');
-      });
-      const selected = document.getElementById(`preset-${presetId}`);
-      if (selected) {
-        selected.classList.remove('border-brand-border');
-        selected.classList.add('border-2', 'border-brand-lime');
-      }
-    }
-
-    // File Drop Handler Simulation
-    function handleFileSelect(e) {
-      const files = e.target.files;
-      if (files.length > 0) {
-        const file = files[0];
-        document.getElementById('preview-title').innerText = file.name;
-        alert(`Selected video file: ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)`);
-      }
-    }
-
-    // Trigger AI Processing Workflow
-    function startProcessingJob() {
-      switchView('processing');
-      
-      const logs = document.getElementById('terminal-logs');
-      const bar = document.getElementById('processing-bar');
-      
-      // Step Timer Simulation
-      let progress = 15;
-      
-      const interval = setInterval(() => {
-        progress += 18;
-        if (progress > 100) progress = 100;
-        
-        bar.style.width = `${progress}%`;
-
-        if (progress >= 35 && progress < 55) {
-          document.getElementById('step-1').innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span class="font-bold text-gray-300">1. Scene Cut & HSV Histogram</span><span class="ml-auto text-[10px] text-emerald-400 font-bold">DONE</span>`;
-          document.getElementById('step-2').className = "step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-brand-border text-xs";
-          document.getElementById('step-2').innerHTML = `<i class="fa-solid fa-circle-notch text-brand-lime animate-spin"></i><span class="font-bold text-gray-200">2. Groq Whisper Timestamps</span><span class="ml-auto text-[10px] text-brand-lime font-bold">RUNNING</span>`;
-          logs.innerHTML += `<p>[WHISPER] Transcribed 1,840 words with accurate word-level alignment</p>`;
-        }
-        else if (progress >= 55 && progress < 75) {
-          document.getElementById('step-2').innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span class="font-bold text-gray-300">2. Groq Whisper Timestamps</span><span class="ml-auto text-[10px] text-emerald-400 font-bold">DONE</span>`;
-          document.getElementById('step-3').className = "step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-brand-border text-xs";
-          document.getElementById('step-3').innerHTML = `<i class="fa-solid fa-circle-notch text-brand-lime animate-spin"></i><span class="font-bold text-gray-200">3. LLM Moment Selection (>75 Score)</span><span class="ml-auto text-[10px] text-brand-lime font-bold">RUNNING</span>`;
-          logs.innerHTML += `<p>[LLM-GROQ] Identified 3 viral peaks: [12.5s-47s (Score 95)], [88s-130s (Score 89)], [204s-232s (Score 81)]</p>`;
-        }
-        else if (progress >= 75 && progress < 95) {
-          document.getElementById('step-3').innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span class="font-bold text-gray-300">3. LLM Moment Selection</span><span class="ml-auto text-[10px] text-emerald-400 font-bold">DONE</span>`;
-          document.getElementById('step-4').className = "step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-brand-border text-xs";
-          document.getElementById('step-4').innerHTML = `<i class="fa-solid fa-circle-notch text-brand-lime animate-spin"></i><span class="font-bold text-gray-200">4. YuNet Face Tracking</span><span class="ml-auto text-[10px] text-brand-lime font-bold">RUNNING</span>`;
-          logs.innerHTML += `<p>[YUNET] Tracking primary speaker X-center with exponential hysteresis smoothing</p>`;
-        }
-        else if (progress >= 100) {
-          clearInterval(interval);
-          document.getElementById('step-4').innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span class="font-bold text-gray-300">4. YuNet Face Tracking</span><span class="ml-auto text-[10px] text-emerald-400 font-bold">DONE</span>`;
-          document.getElementById('step-5').className = "step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-brand-border text-xs";
-          document.getElementById('step-5').innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span class="font-bold text-gray-300">5. Burning Karaoke ASS & 9:16 Render</span><span class="ml-auto text-[10px] text-emerald-400 font-bold">DONE</span>`;
-          logs.innerHTML += `<p>[COMPLETED] Generated 3 viral clips successfully!</p>`;
-          
-          setTimeout(() => {
-            switchView('results');
-          }, 600);
-        }
-      }, 700);
-    }
-
-    // Toggle Play/Pause for generated clips safely against AbortError
-    async function toggleResultVideo(videoId) {
-      const vid = document.getElementById(videoId);
-      if (vid) {
-        try {
-          if (vid.paused) {
-            await vid.play();
-          } else {
-            vid.pause();
-          }
-        } catch (err) {
-          if (err.name === 'AbortError') {
-            console.warn('Playback request was aborted by another play/pause action:', err);
-          } else {
-            console.error('Video playback error:', err);
-          }
-        }
-      }
-    }
-
-    // Play Demo Clip Modal Simulation safely
-    function playDemoClip(clipId) {
-      try {
-        alert(`Playing high-virality preview for ${clipId}. In full version, this renders fully interactive 9:16 vertical video with burning karaoke captions!`);
-      } catch (e) {
-        console.warn('Action aborted or interrupted:', e);
-      }
-    }
-
-    // Modal Handlers
-    function openSourceCodeModal() {
-      document.getElementById('source-modal').classList.remove('hidden');
-    }
-    function closeSourceCodeModal() {
-      document.getElementById('source-modal').classList.add('hidden');
-    }
-
-    // Helper functions for mock downloads
-    function downloadSingleMP4(filename) {
-      alert(`Downloading vertical MP4 clip: ${filename}`);
-    }
-    function downloadSRT(filename) {
-      alert(`Downloading Karaoke SRT Subtitles: ${filename}`);
-    }
-    function downloadAllClipsZip() {
-      alert(`Exporting all generated MP4 clips and SRT subtitles in a single ZIP file...`);
-    }
-
-    // ================= AUTOMATIC BACKEND SOURCE CODE ZIP GENERATOR =================
-    function downloadSourceZip() {
-      const zip = new JSZip();
-
-      // 1. app.py (Backend Server)
-      const appPyContent = `"""
-JpClips - OpusClip Quality AI Video Clipper Backend Server
-Stack: Python Flask, Groq Whisper API, OpenCV YuNet DNN, FFmpeg
-"""
-import os
-import json
-import subprocess
-from flask import Flask, request, jsonify, send_file
-from groq import Groq
-
-app = Flask(__name__)
-GROQ_API_KEY = os.getenv("GROQ_KEY", "your_groq_api_key_here")
-groq_client = Groq(api_key=GROQ_API_KEY)
-
-VIRAL_PROMPT = """
-You are an elite viral short-form video editor who has created 100M+ view clips.
-Given a transcript with [start-end sec] segments, pick the N MOST VIRAL moments for TikTok/Reels/Shorts.
-
-VIRALITY RULES:
-1. HOOK IS EVERYTHING: First 1-3 seconds MUST have a pattern interrupt.
-2. NO BUILDUP: Start AT the interesting part.
-3. EMOTIONAL SPIKES: Prioritize anger, surprise, laughter, controversy.
-4. COMPLETE PAYOFF: Satisfying ending.
-5. Each moment 15-60 seconds.
-
-SCORING (be harsh):
-- 95-100: 1M+ view potential.
-- 85-94: Strong viral potential.
-- 75-84: Good clip.
-- Below 75: DO NOT SELECT.
-
-OUTPUT (JSON only):
-[{"start": 12.5, "end": 47.0, "score": 95, "subs": {"hook": 24, "flow": 23, "value": 25, "trend": 23}, "title": "punchy title", "hook": "opening line"}]
-"""
-
-@app.route("/api/transcribe", methods=["POST"])
-def transcribe():
-    file = request.files.get("video")
-    if not file:
-        return jsonify({"error": "No video provided"}), 400
-    
-    # Save video temp
-    video_path = "/tmp/input.mp4"
-    file.save(video_path)
-    
-    # Extract audio for Whisper
-    audio_path = "/tmp/audio.mp3"
-    subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-acodec", "libmp3lame", audio_path], check=True)
-    
-    # Transcribe with Groq Whisper
-    with open(audio_path, "rb") as a_file:
-        transcription = groq_client.audio.transcriptions.create(
-            file=(audio_path, a_file.read()),
-            model="whisper-large-v3",
-            response_format="verbose_json",
-            timestamp_granularities=["word"]
-        )
-    return jsonify(transcription.words)
-
-@app.route("/api/select_moments", methods=["POST"])
-def select_moments():
-    transcript_words = request.json.get("words", [])
-    
-    # Send transcript to Groq LLM with harsh scoring prompt
-    response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": VIRAL_PROMPT},
-            {"role": "user", "content": f"Transcript JSON: {json.dumps(transcript_words)}"}
-        ],
-        temperature=0.2,
-    )
-    
-    clips = json.loads(response.choices[0].message.content)
-    # Filter strictly score >= 75
-    viral_clips = [c for c in clips if c.get("score", 0) >= 75]
-    return jsonify(viral_clips)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-`;
-
-      // 2. face_tracker.py (YuNet Tracking & Scene Cut HSV)
-      const faceTrackerContent = `"""
-JpClips YuNet Face Tracking Engine with Hysteresis & Scene Cut Detection
-"""
-import cv2
-import numpy as np
-
-class YuNetFaceTracker:
-    def __init__(self, model_path="models/yunet.onnx"):
-        self.detector = cv2.FaceDetectorYN_create(
-            model_path, "", (320, 320), score_threshold=0.6
-        )
-        self.prev_x = None
-        self.hysteresis_count = 0
-        self.last_hist = None
-
-    def detect_scene_cut(self, frame):
-        # Convert to HSV and compare 16x16x16 histogram
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        hist = cv2.calcHist([hsv], [0, 1, 2], None, [16, 16, 16], [0, 180, 0, 256, 0, 256])
-        cv2.normalize(hist, hist)
-        
-        if self.last_hist is not None:
-            chi_sq = cv2.compareHist(self.last_hist, hist, cv2.HISTCMP_CHISQR)
-            if chi_sq > 2.5: # Hard cut detected
-                self.last_hist = hist
-                return True
-        self.last_hist = hist
-        return False
-
-    def get_smooth_crop_x(self, frame, frame_w, frame_h):
-        # Sample YuNet face
-        self.detector.setInputSize((frame_w, frame_h))
-        _, faces = self.detector.detect(frame)
-        
-        target_x = frame_w / 2
-        if faces is not None and len(faces) > 0:
-            largest_face = max(faces, key=lambda f: f[2] * f[3])
-            face_center_x = largest_face[0] + largest_face[2] / 2
-            target_x = face_center_x
-        
-        # Exponential Smoothing (x = 0.3 * new + 0.7 * prev)
-        if self.prev_x is None:
-            self.prev_x = target_x
-        else:
-            self.prev_x = 0.3 * target_x + 0.7 * self.prev_x
-            
-        return int(self.prev_x)
-`;
-
-      // 3. subtitle_generator.py
-      const subtitleContent = `"""
-ASS Karaoke Subtitle Generator for JpClips (Hormozi, Leon, Beast styles)
-"""
-
-def generate_ass_karaoke(words_data, output_ass_path, style="hormozi1"):
-    header = """[Script Info]
-ScriptType: v4.00+
-PlayResX: 1080
-PlayResY: 1920
-
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Hormozi1,Montserrat,84,&H00FFFFFF,&H003DFFFF,&H00000000,&H80000000,1,0,2,10,10,650,1
-"""
-    body = "\\n[Events]\\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\\n"
-    
-    # Process word-level karaoke timing \\k tags
-    for w in words_data:
-        start_time = w['start']
-        end_time = w['end']
-        word = w['word'].upper()
-        dur_cs = int((end_time - start_time) * 100)
-        body += f"Dialogue: 0,0:00:01.00,0:00:05.00,Hormozi1,,0,0,0,,{{\\\\k{dur_cs}}}{word} \\n"
-        
-    with open(output_ass_path, "w") as f:
-        f.write(header + body)
-`;
-
-      // 4. Dockerfile & Requirements
-      const dockerfileContent = `FROM python:3.12-slim
-RUN apt-get update && apt-get install -y ffmpeg fontconfig fonts-montserrat && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["python", "app.py"]`;
-
-      const requirementsContent = `flask==3.0.0
-groq==0.4.2
-openai==1.12.0
-opencv-python-headless==4.9.0.80
-numpy==1.26.4
-yt-dlp>=2024.03.10`;
-
-      // Add files to ZIP
-      const folder = zip.folder("jpclips_backend");
-      folder.file("app.py", appPyContent);
-      folder.file("face_tracker.py", faceTrackerContent);
-      folder.file("subtitle_generator.py", subtitleContent);
-      folder.file("Dockerfile", dockerfileContent);
-      folder.file("requirements.txt", requirementsContent);
-      folder.file("README.md", `# JpClips AI Video Clipper Backend\n\nRun locally:\n1. pip install -r requirements.txt\n2. export GROQ_KEY="your_key"\n3. python app.py`);
-
-      // Generate ZIP and trigger browser download
-      zip.generateAsync({ type: "blob" }).then(function(content) {
-        saveAs(content, "JpClips_AI_Video_Clipper_SourceCode.zip");
-      });
-    }
-
-    // Auto trigger ZIP download notification prompt on page ready
-    window.addEventListener('DOMContentLoaded', () => {
-      console.log('JpClips AI Clipper initialized successfully.');
-    });
-  {% endraw %}
-</script>
-</body>
-</html>
-</main>
-<footer class="border-t border-brand-border/60 bg-[#07070b] py-8 px-4 mt-auto">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-white">JpClips AI</span>
-        <span>•</span>
-        <span>Built with Groq Whisper & Llama 3.3, YuNet OpenCV, and FFmpeg</span>
-      </div>
-      <div class="flex items-center gap-4">
-        
-        <a href="/" class="hover:text-white">Home</a>
-        <a href="/dashboard" class="hover:text-white">Create Clips</a>
-      </div>
-    </div>
-  </footer>
-
+{% block scripts %}
 <script>
 (function(){
-  var path = window.location.pathname;
-  var id = null;
-  if (path === '/' ) id = 'nav-landing';
-  else if (path === '/dashboard' || path === '/workflow') id = 'nav-workflow';
-  else if (path === '/jobs' || path.indexOf('/job') === 0) id = 'nav-jobs';
-  if (id) {
-    var el = document.getElementById(id);
-    if (el) { el.classList.remove('text-gray-400'); el.classList.add('text-white','bg-brand-border/60'); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtDate(ts){
+    if (!ts) return '';
+    var d = new Date(ts * 1000);
+    return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}).toUpperCase();
   }
-  // Fix nav links: ensure they're <a> tags with href
-  document.querySelectorAll('.nav-btn').forEach(function(b){
-    if (b.tagName === 'BUTTON') {
-      var a = document.createElement('a');
-      a.className = b.className; a.id = b.id; a.innerHTML = b.innerHTML;
-      if (b.id === 'nav-landing') a.href = '/';
-      else if (b.id === 'nav-workflow') a.href = '/dashboard';
-      else if (b.id === 'nav-jobs') a.href = '/jobs';
-      b.parentNode.replaceChild(a, b);
-    }
-  });
-})();
-</script>
+  function statusBadge(st){
+    st = (st||'unknown').toLowerCase();
+    if (st === 'done') return '<span class="text-[10px] font-bold tracking-wider text-emerald-400 bg-emerald-400/10 border border-emerald-400/30 rounded-full px-2.5 py-1">DONE</span>';
+    if (st === 'running') return '<span class="text-[10px] font-bold tracking-wider text-os-orange bg-os-orange/10 border border-os-orange/30 rounded-full px-2.5 py-1"><span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-os-orange mr-1"></span>PROCESSING</span>';
+    if (st === 'error') return '<span class="text-[10px] font-bold tracking-wider text-red-400 bg-red-400/10 border border-red-400/30 rounded-full px-2.5 py-1">FAILED</span>';
+    return '<span class="text-[10px] font-bold tracking-wider text-os-muted bg-os-card2 border border-os-border rounded-full px-2.5 py-1">' + esc(st.toUpperCase()) + '</span>';
+  }
 
-
-<script>
-(function(){
-  fetch('/api/jobs').then(r=>r.json()).then(function(d){
-    var grid = document.getElementById('jobs-grid');
-    if (!grid) {
-      // Create grid if the view doesn't have one
-      var v = document.getElementById('view-jobs');
-      grid = document.createElement('div');
-      grid.id = 'jobs-grid';
-      grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6';
-      if (v) v.appendChild(grid);
+  function projectCard(p){
+    var clips = '';
+    if (p.status === 'done' && p.jid){
+      clips = '<div class="text-[12px] text-os-muted mt-4 flex items-center gap-2"><i class="fa-solid fa-film text-os-orange/70"></i> ' + p.nclips + ' clips · ' +
+        '<a href="/job/' + p.jid + '" class="text-os-orange font-semibold hover:underline">open project →</a></div>';
+    } else if (p.status === 'running'){
+      clips = '<div class="mt-4"><div class="h-1.5 bg-os-card2 rounded-full overflow-hidden"><div class="h-full bg-os-orange rounded-full transition-all" style="width:' + (p.progress||0) + '%"></div></div>' +
+        '<div class="text-[12px] text-os-muted mt-1.5">' + esc(p.step||'Working…') + ' · ' + (p.progress||0) + '%</div></div>';
+    } else if (p.status === 'error'){
+      clips = '<div class="text-[12px] text-red-400/90 mt-4">' + esc((p.error||'Failed').slice(0,120)) + '</div>';
     }
+    return '' +
+    '<div class="bg-os-card border border-os-border rounded-2xl p-5">' +
+      '<div class="flex items-start justify-between gap-4 flex-wrap">' +
+        '<div class="min-w-0">' +
+          '<div class="text-[15px] font-bold text-white truncate max-w-[520px]">' + esc(p.name || p.jid) + '</div>' +
+          '<div class="text-[11px] text-os-faint mt-1 tracking-wider">' + fmtDate(p.created) + (p.nclips ? ' · ' + p.nclips + ' CLIPS' : '') + '</div>' +
+        '</div>' +
+        '<div class="flex items-center gap-2.5">' + statusBadge(p.status) +
+          '<a href="/job/' + p.jid + '" class="flex items-center gap-1.5 text-[12px] font-semibold text-os-muted hover:text-white border border-os-border rounded-full px-3.5 py-1.5 transition-colors"><i class="fa-solid fa-folder-open text-[10px]"></i> reopen project</a>' +
+        '</div>' +
+      '</div>' + clips +
+    '</div>';
+  }
+
+  fetch('/api/jobs').then(function(r){ return r.json(); }).then(function(d){
     var jobs = d.jobs || [];
-    if (!jobs.length) {
-      grid.innerHTML = '<div class="col-span-3 text-center text-gray-400 py-12">No projects yet. <a href="/dashboard" class="text-brand-lime font-bold">Create your first clip →</a></div>';
-      return;
-    }
-    grid.innerHTML = '';
-    jobs.forEach(function(j){
-      var a = document.createElement('a');
-      a.href = '/job/'+j.id;
-      a.className = 'bg-brand-card border border-brand-border rounded-2xl overflow-hidden hover:border-brand-lime/50 transition-all';
-      var badge = j.status==='done'
-        ? '<span class="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded-full">✓ Done</span>'
-        : j.status==='error'
-        ? '<span class="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded-full">Error</span>'
-        : '<span class="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded-full">⏳ '+(j.progress||0)+'%</span>';
-      a.innerHTML =
-        '<div class="p-5"><div class="flex items-start justify-between gap-2">'+
-        '<h3 class="font-bold text-white text-sm truncate">'+(j.name||j.id)+'</h3>'+badge+'</div>'+
-        '<div class="text-xs text-gray-500 mt-1">'+(j.created||'')+'</div>'+
-        (j.top_score?'<div class="text-brand-lime font-mono text-sm mt-2">⚡ '+j.top_score+'</div>':'')+
-        '</div>';
-      grid.appendChild(a);
-    });
-  }).catch(function(e){
-    console.error('jobs load failed', e);
+    if (!jobs.length){ document.getElementById('empty').classList.remove('hidden'); return; }
+    document.getElementById('projects').innerHTML = jobs.map(projectCard).join('');
+  }).catch(function(){
+    document.getElementById('empty').classList.remove('hidden');
   });
 })();
 </script>
-
-</body>
-</html>
+{% endblock %}
