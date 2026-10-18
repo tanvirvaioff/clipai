@@ -1,236 +1,505 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JpClips — Clip Settings</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0a0a0f;--card:#14141c;--card2:#1c1c26;--border:#262633;--txt:#f1f1f4;--mut:#9a9ab0;--acc:#7c3aed;--green:#22c55e}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;min-height:100vh;display:flex}
-.side{width:64px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;position:sticky;top:0;height:100vh}
-.side a{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--mut);font-size:19px;text-decoration:none}
-.side a:hover{background:var(--card2);color:var(--txt)}
-.side .sp{flex:1}
-.main{flex:1;min-width:0;padding:30px 24px 90px;max-width:640px;margin:0 auto;width:100%}
-.vthumb{position:relative;width:210px;margin:6px auto 18px;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border)}
-.vthumb img,.vthumb video{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
-.vthumb .res{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px}
-.vthumb .rm{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.65);border:0;color:#fff;font-size:11px;border-radius:8px;padding:3px 9px;cursor:pointer}
-.bigbtn{display:block;width:100%;max-width:420px;margin:0 auto;background:#fff;color:#111;border:0;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;transition:.15s}
-.bigbtn:hover{transform:scale(1.02)}
-.bigbtn:disabled{opacity:.6;cursor:wait}
-.metarow{display:flex;justify-content:center;align-items:center;gap:18px;margin:16px 0 22px;font-size:13px;color:var(--mut);flex-wrap:wrap}
-.metarow select{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:7px 10px;font-size:13px}
-.metarow .cu{color:var(--txt);font-weight:700}
-.metarow .cu b{color:#f59e0b}
-.tabs{display:flex;gap:26px;border-bottom:1px solid var(--border);margin-bottom:18px}
-.tabs button{background:none;border:0;color:var(--mut);font-size:14px;font-weight:700;padding:10px 2px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
-.tabs button.on{color:var(--txt);border-bottom-color:var(--txt)}
-.optgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
-.optgrid label{font-size:11px;color:var(--mut);font-weight:600;display:block;margin-bottom:5px}
-.optgrid select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:10px;font-size:13px}
-.togs{display:flex;gap:26px;margin:4px 0 18px}
-.tog{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
-.switch{position:relative;width:42px;height:24px;flex-shrink:0}
-.switch input{opacity:0;width:0;height:0}
-.sl{position:absolute;inset:0;background:#3a3a4a;border-radius:20px;cursor:pointer;transition:.2s}
-.sl:before{position:absolute;content:"";height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
-.switch input:checked+.sl{background:var(--acc)}
-.switch input:checked+.sl:before{transform:translateX(18px)}
-.plabel{font-size:13px;color:var(--mut);margin-bottom:8px;display:flex;justify-content:space-between}
-.plabel a{color:var(--mut);font-size:12px}
-.ptxt{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:12px;padding:13px;font-size:13px;margin-bottom:20px}
-.ptxt::placeholder{color:#5a5a6e}
-.tfhead{font-size:13px;color:var(--mut);margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.csaver{font-size:10px;background:#14532d;color:#86efac;border-radius:8px;padding:3px 9px;font-weight:700}
-.tfwrap{position:relative;height:44px;margin-bottom:6px}
-.tfwrap input[type=range]{position:absolute;width:100%;top:8px;-webkit-appearance:none;background:transparent;pointer-events:none;margin:0}
-.tfwrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--acc);cursor:pointer}
-.tfwrap input[type=range]::-moz-range-thumb{pointer-events:auto;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--acc);cursor:pointer}
-.tftrack{position:absolute;top:16px;left:0;right:0;height:5px;background:#2a2a38;border-radius:4px}
-.tffill{position:absolute;top:16px;height:5px;background:var(--acc);border-radius:4px}
-.tflabels{display:flex;justify-content:space-between;margin-bottom:22px}
-.tflabels span{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:12px;font-weight:600}
-.ptabs{display:flex;gap:26px;margin-bottom:14px}
-.ptabs button{background:none;border:0;color:var(--mut);font-size:13px;font-weight:700;padding:8px 2px;cursor:pointer}
-.ptabs button.on{color:var(--txt);border-bottom:2px solid var(--txt)}
-.capgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:8px}
-.capgrid label{cursor:pointer;margin:0}
-.capgrid input{display:none}
-.pres{background:var(--card2);border:2px solid var(--border);border-radius:12px;height:64px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;text-align:center;padding:4px;line-height:1.25;transition:.15s;overflow:hidden}
-.capgrid label:has(input:checked) .pres{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
-.capnm{text-align:center;font-size:10px;color:var(--mut);margin-top:4px;font-weight:600}
-.p-none{background:#2a2a35;color:var(--mut);font-size:20px}
-.p-karaoke{background:#1a1a24;color:#fff}
-.p-deepdiver{background:#3a3a48;color:#e5e5ee;font-weight:600;font-size:11px}
-.p-youshaei{background:#1a1a24;color:#5eead4}
-.p-podp{background:#1a1a24;color:#f472b6}
-.p-mozi{background:#101014;color:#fff}.p-mozi b{color:#4ade80}
-.p-beasty{background:#1a1a24;color:#fff;font-style:italic}
-.p-simple{background:#1a1a24;color:#fff;letter-spacing:1px}
-.p-popline{background:#101014;color:#ff6b00}
-.p-thinkmedia{background:#1a1a24;color:#facc15}
-.arow{display:flex;align-items:center;gap:10px;margin:20px 0;font-size:13px;color:var(--mut)}
-.arow select{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:8px 12px;font-size:13px}
-.savedef{display:block;margin:0 auto;background:var(--card2);border:1px solid var(--border);color:var(--mut);border-radius:12px;padding:11px 26px;font-size:13px;font-weight:600;cursor:pointer}
-.savedef:hover{color:var(--txt);border-color:var(--acc)}
-.seg{display:flex;gap:8px;margin-bottom:18px}
-.seg label{flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--mut);background:var(--card2);margin:0}
-.seg input{display:none}
-.seg label:has(input:checked){border-color:var(--acc);color:var(--txt);font-weight:700}
-.seglbl{font-size:12px;color:var(--mut);font-weight:600;margin-bottom:6px}
-.adv{margin-top:22px;border-top:1px solid var(--border);padding-top:18px}
-.adv summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--mut)}
-.adv .in{margin-top:12px}
-.adv select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:10px;font-size:13px;margin-bottom:10px}
-.adv input[type=text]{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:10px;font-size:13px;margin-bottom:10px}
-.adv input[type=range]{width:100%;accent-color:var(--acc)}
-@media(max-width:640px){.side{display:none}.capgrid{grid-template-columns:repeat(3,1fr)}.optgrid{grid-template-columns:1fr}}
-</style></head>
-<body>
-<nav class="side">
-<a href="/dashboard" title="Home">⌂</a><a href="/jobs" title="My projects">▦</a><a href="/jobs" title="Calendar">▤</a><a href="/jobs" title="Analytics">◔</a><div class="sp"></div><a href="/jobs" title="Help">?</a>
-</nav>
-<div class="main">
-<form action="/start" method="post" id="f">
-<input type="hidden" name="wf_token" value="{{ src.token or '' }}">
-<input type="hidden" name="youtube_url" value="{{ src.url or '' }}">
-<input type="hidden" name="source_kind" value="{{ src.kind }}">
-<input type="hidden" name="source_name" value="{{ src.title or 'video' }}">
-<input type="hidden" name="provider" value="openai">
-<input type="hidden" name="caption_style" id="capstyle" value="hormozi1">
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JpClips — Turn long videos into scroll-stopping clips</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter & Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,800;0,900;1,900&display=swap" rel="stylesheet">
+  <!-- JSZip & FileSaver for automatic source code export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              lime: '#b9f36b',
+              limeDark: '#9de043',
+              dark: '#0a0a0f',
+              card: '#12121c',
+              border: '#1f1f30',
+              accent: '#ff6b00'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Montserrat', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      background-color: #0a0a0f;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f1f30;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #b9f36b;
+    }
 
-<div class="vthumb">
-{% if src.kind == 'youtube' %}
-<img src="{{ src.thumb }}" alt="video">
-{% else %}
-<video src="{{ src.preview_url }}" muted playsinline></video>
-{% endif %}
-{% if src.res %}<span class="res">{{ src.res }}</span>{% endif %}
-<button type="button" class="rm" onclick="location.href='/'">Remove</button>
-</div>
+    .lime-glow {
+      box-shadow: 0 0 25px rgba(185, 243, 107, 0.25);
+    }
+    .lime-glow-sm {
+      box-shadow: 0 0 12px rgba(185, 243, 107, 0.2);
+    }
+    
+    /* Glassmorphism */
+    .glass-panel {
+      background: rgba(18, 18, 28, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    
+    /* Caption Animations */
+    @keyframes popIn {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .caption-word-active {
+      animation: popIn 0.15s ease-out forwards;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<header class="sticky top-0 z-50 glass-panel border-b border-brand-border/60 px-4 lg:px-8 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-2.5 group">
+        <div class="w-10 h-10 rounded-xl bg-brand-lime flex items-center justify-center text-black font-extrabold text-xl shadow-lg shadow-brand-lime/20 group-hover:scale-105 transition-transform">
+          <i class="fa-solid font-bold fa-bolt text-lg"></i>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xl font-black tracking-tight text-white flex items-center gap-1">
+            Jp<span class="text-brand-lime">Clips</span>
+            <span class="text-[10px] bg-brand-lime/10 text-brand-lime border border-brand-lime/30 px-1.5 py-0.5 rounded font-mono font-semibold">PRO v2.6</span>
+          </span>
+          <span class="text-[10px] text-gray-400 -mt-1 tracking-wider uppercase">OpusClip-Quality AI</span>
+        </div>
+      </a>
 
-<button class="bigbtn" type="submit" id="go">Get clips in 1 click</button>
+      <!-- Center Navigation Links -->
+      <nav class="hidden md:flex items-center gap-1 bg-[#0f0f18] p-1 rounded-xl border border-brand-border">
+        <a href="/" id="nav-landing" 
+          <i class="fa-solid fa-house mr-2 text-xs"></i>Home
+        </a>
+        <a href="/dashboard" id="nav-workflow" 
+          <i class="fa-solid fa-wand-magic-sparkles mr-2 text-xs text-brand-lime"></i>New Clip
+        </a>
+        <a href="/jobs" id="nav-jobs" 
+          <i class="fa-solid fa-layer-group mr-2 text-xs"></i>My Projects
+        </a>
+        
+      </nav>
 
-<div class="metarow">
-<span>Speech language:
-<select name="speech_lang">
-<option value="en" selected>English</option><option value="es">Spanish</option>
-<option value="fr">French</option><option value="de">German</option>
-<option value="pt">Portuguese</option><option value="hi">Hindi</option>
-<option value="ar">Arabic</option><option value="bn">Bengali</option>
-<option value="ur">Urdu</option><option value="tr">Turkish</option>
-<option value="it">Italian</option><option value="nl">Dutch</option>
-<option value="ru">Russian</option><option value="ja">Japanese</option>
-<option value="ko">Korean</option><option value="zh">Chinese</option>
-</select></span>
-<span>📄 Upload SRT <small>(optional)</small></span>
-<span class="cu">Credit usage: <b>⚡15</b></span>
-</div>
+      <!-- Right CTAs -->
+      <div class="flex items-center gap-3">
+        <button onclick="downloadSourceZip()" class="hidden sm:flex items-center gap-2 bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-lime border border-brand-lime/40 px-3.5 py-2 rounded-xl text-xs font-bold transition-all">
+          <i class="fa-solid fa-file-zipper text-sm"></i>
+          <span>Download Backend ZIP</span>
+        </a>
+        <button onclick="switchView('workflow')" class="bg-brand-lime hover:bg-brand-limeDark text-black font-extrabold px-4 py-2 rounded-xl text-sm transition-all transform hover:scale-[1.02] shadow-md shadow-brand-lime/20 flex items-center gap-2">
+          <span>Create Clips</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+<main class="flex-1 max-w-7xl mx-auto w-full px-4 lg:px-8 py-8">
+<section id="view-workflow" class=" space-y-8">
+      
+      <!-- Top Title -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-brand-border pb-6">
+        <div>
+          <h1 class="text-3xl font-black text-white flex items-center gap-3">
+            <span>New Video Clipping Job</span>
+            <span class="text-xs bg-brand-lime/10 text-brand-lime border border-brand-lime/30 px-2 py-0.5 rounded font-mono">STEP 1 OF 2</span>
+          </h1>
+          <p class="text-sm text-gray-400 mt-1">Configure AI model options, virality threshold, caption themes, and speaker reframing.</p>
+        </div>
+        
+      </div>
 
-<div class="tabs">
-<button type="button" class="on" id="tAi" onclick="mode('ai')">AI clipping</button>
-<button type="button" id="tMan" onclick="mode('manual')">Don't clip</button>
-</div>
-<input type="hidden" name="clip_mode" id="clipmode" value="ai">
+      <!-- Video Input Box / Preview Header -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Input & Preview Column -->
+        <div class="lg:col-span-1 space-y-4">
+          <div class="bg-brand-card p-5 rounded-2xl border border-brand-border space-y-4">
+            <h3 class="text-sm font-extrabold uppercase tracking-wider text-brand-lime flex items-center gap-2">
+              <i class="fa-solid fa-video"></i> Video Source
+            </h3>
 
-<div id="aiOpts">
-<div class="optgrid">
-<div><label>Clip model</label><select name="clip_model"><option value="clipbasic" selected>ClipBasic</option><option value="clipanything">ClipAnything</option></select></div>
-<div><label>Genre</label><select name="genre"><option selected>Auto</option><option>Podcast</option><option>Vlog</option><option>Gaming</option><option>Sports</option><option>Interview</option><option>Education</option><option>Comedy</option><option>Business</option></select></div>
-<div><label>Clip length</label><select name="clip_length"><option value="auto0-3m" selected>Auto (0m-3m)</option><option value="0-30s">Short (0-30s)</option><option value="30-60s">Medium (30-60s)</option><option value="60-180s">Long (60s-3m)</option></select></div>
-</div>
-</div>
+            <!-- Drop Zone -->
+            <div id="drop-zone" onclick="document.getElementById('video-file-input').click()" 
+                 class="border-2 border-dashed border-brand-border hover:border-brand-lime rounded-xl p-6 text-center cursor-pointer transition-colors bg-[#0d0d14] group">
+              <input type="file" id="video-file-input" class="" accept="video/*" onchange="handleFileSelect(event)">
+              <div class="w-12 h-12 rounded-full bg-brand-lime/10 text-brand-lime flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+              </div>
+              <p class="text-sm font-bold text-gray-200">Drag & Drop MP4/MOV video file</p>
+              <p class="text-xs text-gray-500 mt-1">or click to browse local storage (Up to 2GB)</p>
+            </div>
 
-<div class="togs">
-<label class="tog">Auto headline <span class="switch"><input type="checkbox" name="auto_headline" checked><span class="sl"></span></span></label>
-<label class="tog">Auto zoom <span class="switch"><input type="checkbox" name="auto_zoom"><span class="sl"></span></span></label>
-<label class="tog">Face tracking <span class="switch"><input type="checkbox" name="face_track" checked><span class="sl"></span></span></label>
-</div>
+            <div class="relative flex items-center justify-center text-xs uppercase text-gray-500 font-bold">
+              <span class="bg-brand-card px-2 z-10">OR PASTE YOUTUBE URL</span>
+              <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-brand-border"></div></div>
+            </div>
 
-<div class="plabel"><span>Include specific moments</span><a href="#" onclick="return false">Not sure how to prompt? learn more</a></div>
-<input class="ptxt" type="text" name="moment_prompt" placeholder="Example: find moments when we talked about the playoffs">
+            <div class="space-y-2">
+              <input type="text" id="workflow-url-input" placeholder="https://www.youtube.com/watch?v=..." 
+                class="w-full bg-[#0a0a0f] text-white text-sm px-3.5 py-2.5 rounded-xl border border-brand-border focus:border-brand-lime focus:outline-none">
+              
+            </div>
+          </div>
 
-{% if src.duration and src.duration > 0 %}
-<div class="tfhead">Processing timeframe <span class="csaver">Credit saver</span></div>
-<div class="tfwrap">
-<div class="tftrack"></div><div class="tffill" id="tffill"></div>
-<input type="range" id="tfs" min="0" max="{{ src.duration|int }}" value="0" step="1">
-<input type="range" id="tfe" min="0" max="{{ src.duration|int }}" value="{{ src.duration|int }}" step="1">
-</div>
-<div class="tflabels"><span id="tfsL">0:00:00</span><span id="tfeL">0:00:00</span></div>
-<input type="hidden" name="tf_start" id="tfsV" value="">
-<input type="hidden" name="tf_end" id="tfeV" value="">
-{% endif %}
+          <!-- Video Thumbnail Preview Box -->
+          <div id="video-preview-card" class="bg-brand-card p-4 rounded-2xl border border-brand-border space-y-3">
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span class="font-bold text-white">Selected Source</span>
+              <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono text-[10px]">1080p HD</span>
+            </div>
+            <div class="relative aspect-video rounded-xl bg-black overflow-hidden border border-brand-border">
+              <img id="preview-thumbnail" src="https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=800&q=80" class="w-full h-full object-cover" alt="Video Thumbnail">
+              <div class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded font-mono">
+                18:42 Length
+              </div>
+            </div>
+            <div class="text-xs text-gray-400 space-y-1">
+              <p class="font-bold text-gray-200 line-clamp-1" id="preview-title">Lex Fridman Podcast #410 — AI & Robotics Future</p>
+              <p class="text-[11px] text-gray-500">Audio: English (Whisper Auto-detect)</p>
+            </div>
+          </div>
+        </div>
 
-<div class="ptabs"><button type="button" class="on">Quick presets</button><button type="button" onclick="alert('Custom templates coming soon')">My templates</button></div>
-<div style="font-size:13px;font-weight:700;margin-bottom:10px">Caption</div>
-<div class="capgrid" id="caps">
-<label><input type="radio" name="cap" value="none"><div><div class="pres p-none">🚫</div><div class="capnm">No caption</div></div></label>
-<label><input type="radio" name="cap" value="karaoke" checked><div><div class="pres p-karaoke">TO GET<br>STARTED</div><div class="capnm">Karaoke</div></div></label>
-<label><input type="radio" name="cap" value="deepdiver"><div><div class="pres p-deepdiver">To get started</div><div class="capnm">Deep Diver</div></div></label>
-<label><input type="radio" name="cap" value="youshaei"><div><div class="pres p-youshaei">TO GET STARTED</div><div class="capnm">Youshaei</div></div></label>
-<label><input type="radio" name="cap" value="podp"><div><div class="pres p-podp">TO GET</div><div class="capnm">Pod P</div></div></label>
-<label><input type="radio" name="cap" value="mozi"><div><div class="pres p-mozi">CLIPPING<br><b>WITH AI</b></div><div class="capnm">Mozi</div></div></label>
-<label><input type="radio" name="cap" value="beasty"><div><div class="pres p-beasty">TO GET</div><div class="capnm">Beasty</div></div></label>
-<label><input type="radio" name="cap" value="simple"><div><div class="pres p-simple">TO GET</div><div class="capnm">Simple</div></div></label>
-<label><input type="radio" name="cap" value="popline"><div><div class="pres p-popline">TO GET<br>STARTED</div><div class="capnm">Popline</div></div></label>
-<label><input type="radio" name="cap" value="thinkmedia"><div><div class="pres p-thinkmedia">TO GET<br>STARTED</div><div class="capnm">Think Media</div></div></label>
-</div>
+        <!-- Settings Options Grid Column -->
+        <div class="lg:col-span-2 bg-brand-card p-6 rounded-2xl border border-brand-border space-y-6">
+          
+          <h3 class="text-base font-extrabold text-white border-b border-brand-border pb-3 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-brand-lime"></i> AI Clipper Settings
+          </h3>
 
-<div class="seglbl">Caption position</div>
-<div class="seg">
-<label><input type="radio" name="caption_pos" value="top"><span>⬆️ Top</span></label>
-<label><input type="radio" name="caption_pos" value="middle" checked><span>⏺️ Middle</span></label>
-<label><input type="radio" name="caption_pos" value="bottom"><span>⬇️ Bottom</span></label>
-</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            
+            <!-- Language -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between">
+                <span>Speech Language</span>
+                <span class="text-[10px] text-brand-lime font-normal">Whisper Word-Level</span>
+              </label>
+              <select id="setting-language" name="speech_lang" class="w-full bg-[#0a0a0f] text-gray-200 text-sm px-3.5 py-2.5 rounded-xl border border-brand-border focus:border-brand-lime focus:outline-none">
+                <option value="auto">Auto-Detect Language</option>
+                <option value="en" selected>English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="ja">Japanese</option>
+                <option value="pt">Portuguese</option>
+                <option value="hi">Hindi</option>
+              </select>
+            </div>
 
-<div class="arow">Choose aspect ratio
-<select name="aspect"><option value="9:16" selected>📱 9:16</option><option value="1:1" disabled>⬛ 1:1 (soon)</option><option value="16:9" disabled>🖥️ 16:9 (soon)</option></select>
-</div>
+            <!-- Clip Duration Target -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Target Clip Length</label>
+              <select id="setting-duration" name="clip_duration" class="w-full bg-[#0a0a0f] text-gray-200 text-sm px-3.5 py-2.5 rounded-xl border border-brand-border focus:border-brand-lime focus:outline-none">
+                <option value="auto">Auto (Optimal virality 15s - 60s)</option>
+                <option value="short">Short Clips (15s - 30s)</option>
+                <option value="medium">Medium Clips (30s - 60s)</option>
+                <option value="long">Long Clips (60s - 90s)</option>
+              </select>
+            </div>
 
-<div class="seglbl">Number of clips: <b id="nv" style="color:#fff">3</b></div>
-<input type="range" name="n_clips" min="1" max="10" value="3" style="width:100%;accent-color:#7c3aed;margin-bottom:8px" oninput="document.getElementById('nv').textContent=this.value">
+            <!-- Virality Threshold Slider -->
+            <div class="space-y-2 md:col-span-2 bg-[#0a0a0f] p-4 rounded-xl border border-brand-border">
+              <div class="flex justify-between items-center text-xs">
+                <label class="font-bold text-gray-300 uppercase tracking-wider">Virality Score Threshold (Strict Mode)</label>
+                <span id="threshold-val" class="font-black text-brand-lime text-sm">75 / 100</span>
+              </div>
+              <input type="range" id="setting-threshold" name="min_score" min="60" max="95" value="75" oninput="document.getElementById('threshold-val').innerText = this.value + ' / 100'"
+                class="w-full accent-brand-lime bg-gray-800 h-2 rounded-lg cursor-pointer">
+              <p class="text-[11px] text-gray-500">Only selects moments scoring above threshold based on Hook, Pacing, Emotional Spike, & Value payoff.</p>
+            </div>
 
-<button type="button" class="savedef" onclick="saveDef()">Save settings above as default</button>
+            <!-- Caption Themes Preset Swatches -->
+            <div class="space-y-2 md:col-span-2">
+              <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Caption Preset Style</label>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                
+                <div onclick="selectPreset('hormozi1')" id="preset-hormozi1" class="caption-preset-btn p-3 rounded-xl border-2 border-brand-lime bg-[#0a0a0f] cursor-pointer text-center space-y-1 hover:border-brand-lime">
+                  <div class="font-display font-black text-sm uppercase text-white">
+                    <span class="text-yellow-400">HORMOZI</span> <span class="text-emerald-400">ONE</span>
+                  </div>
+                  <p class="text-[10px] text-gray-400">Black outline + Yellow tracker</p>
+                </div>
 
-<details class="adv"><summary>⚙️ Advanced (AI provider & keys)</summary><div class="in">
-<select name="provider_x" id="provx" onchange="document.querySelector('[name=provider]').value=this.value">
-<option value="openai" selected>🧠 OpenAI (Recommended ⭐)</option><option value="groq">⚡ Groq (FREE)</option>
-</select>
-<div style="font-size:11px;color:#9a9ab0;margin:8px 0 10px;line-height:1.5">⭐ <b style="color:#f1f1f4">OpenAI recommended:</b> smarter viral-moment picks & more accurate transcripts. Groq is free but picks slightly weaker moments.</div>
-<input type="text" name="groq_key" placeholder="gsk-... (Groq key, or server default)">
-<input type="text" name="openai_key" placeholder="sk-... (OpenAI key)">
-</div></details>
-</form>
-</div>
+                <div onclick="selectPreset('hormozi2')" id="preset-hormozi2" class="caption-preset-btn p-3 rounded-xl border border-brand-border bg-[#0a0a0f] cursor-pointer text-center space-y-1 hover:border-brand-lime">
+                  <div class="font-display font-black text-sm uppercase text-white">
+                    WHITE + <span class="text-yellow-400">YELLOW</span>
+                  </div>
+                  <p class="text-[10px] text-gray-400">Clean white base</p>
+                </div>
+
+                <div onclick="selectPreset('leon')" id="preset-leon" class="caption-preset-btn p-3 rounded-xl border border-brand-border bg-[#0a0a0f] cursor-pointer text-center space-y-1 hover:border-brand-lime">
+                  <div class="font-display font-black text-sm uppercase">
+                    <span class="bg-brand-accent text-white px-1.5 py-0.5 rounded">LEON STYLE</span>
+                  </div>
+                  <p class="text-[10px] text-gray-400">Submagic orange pill box</p>
+                </div>
+
+                <div onclick="selectPreset('beast')" id="preset-beast" class="caption-preset-btn p-3 rounded-xl border border-brand-border bg-[#0a0a0f] cursor-pointer text-center space-y-1 hover:border-brand-lime">
+                  <div class="font-display font-black text-sm uppercase text-yellow-400">
+                    MR BEAST BOLD
+                  </div>
+                  <p class="text-[10px] text-gray-400">Extra large yellow pop</p>
+                </div>
+
+                <div onclick="selectPreset('minimal')" id="preset-minimal" class="caption-preset-btn p-3 rounded-xl border border-brand-border bg-[#0a0a0f] cursor-pointer text-center space-y-1 hover:border-brand-lime">
+                  <div class="font-sans font-semibold text-sm text-gray-200">
+                    Minimal White
+                  </div>
+                  <p class="text-[10px] text-gray-400">Subtle clean text</p>
+                </div>
+
+                <div onclick="selectPreset('inverted')" id="preset-inverted" class="caption-preset-btn p-3 rounded-xl border border-brand-border bg-[#0a0a0f] cursor-pointer text-center space-y-1 hover:border-brand-lime">
+                  <div class="font-display font-black text-sm uppercase text-yellow-300">
+                    YELLOW BASE
+                  </div>
+                  <p class="text-[10px] text-gray-400">Inverted yellow style</p>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Multi-Speaker Layout Mode -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Multi-Speaker Layout</label>
+              <select id="setting-layout" name="layout_mode" class="w-full bg-[#0a0a0f] text-gray-200 text-sm px-3.5 py-2.5 rounded-xl border border-brand-border focus:border-brand-lime focus:outline-none">
+                <option value="auto" selected>Auto-Detect (Split/Grid Multi-Face)</option>
+                <option value="single">Single Face Track (1 Speaker)</option>
+                <option value="split">2-Speaker Stacked Split (Top/Bottom)</option>
+                <option value="grid">3/4 Speaker Grid Layout</option>
+              </select>
+            </div>
+
+            <!-- Caption Position -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Subtitle Y Position</label>
+              <select id="setting-caption-pos" name="caption_pos" class="w-full bg-[#0a0a0f] text-gray-200 text-sm px-3.5 py-2.5 rounded-xl border border-brand-border focus:border-brand-lime focus:outline-none">
+                <option value="bottom" selected>Bottom (~65% height - Safe UI)</option>
+                <option value="middle">Middle (Center screen focus)</option>
+                <option value="top">Top (Above face level)</option>
+              </select>
+            </div>
+
+            <!-- AI LLM Provider Selector -->
+            <div class="space-y-2 md:col-span-2 bg-[#0a0a0f] p-4 rounded-xl border border-brand-border">
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">AI Moment Selection Engine</label>
+                <span class="text-[10px] bg-brand-lime/10 text-brand-lime px-2 py-0.5 rounded font-mono font-bold">FREE TIER AVAILABLE</span>
+              </div>
+              
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <label class="flex items-center gap-2 p-2.5 rounded-lg border border-brand-lime bg-brand-card/60 cursor-pointer text-xs">
+                  <input type="radio" name="llm-provider" value="groq" checked class="accent-brand-lime">
+                  <div>
+                    <p class="font-bold text-white">Groq Llama 3.3</p>
+                    <p class="text-[10px] text-emerald-400">FREE & Fast</p>
+                  </div>
+                </label>
+                <label class="flex items-center gap-2 p-2.5 rounded-lg border border-brand-border bg-brand-card/60 cursor-pointer text-xs">
+                  <input type="radio" name="llm-provider" value="openai" class="accent-brand-lime">
+                  <div>
+                    <p class="font-bold text-white">OpenAI GPT-4o</p>
+                    <p class="text-[10px] text-gray-400">High Virality Precision</p>
+                  </div>
+                </label>
+                <label class="flex items-center gap-2 p-2.5 rounded-lg border border-brand-border bg-brand-card/60 cursor-pointer text-xs">
+                  <input type="radio" name="llm-provider" value="claude" class="accent-brand-lime">
+                  <div>
+                    <p class="font-bold text-white">Claude 3.5 Sonnet</p>
+                    <p class="text-[10px] text-gray-400">Best Hook Selection</p>
+                  </div>
+                </label>
+              </div>
+
+              <input type="password" id="api-key-input" placeholder="Optional API Key (Leave empty to use server default key)" 
+                class="w-full bg-[#12121c] text-white text-xs px-3.5 py-2 rounded-lg border border-brand-border focus:border-brand-lime focus:outline-none">
+            </div>
+
+            <!-- Custom Topic / Prompt Injection -->
+            <div class="space-y-2 md:col-span-2">
+              <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Custom Moment Focus (Optional Prompt)</label>
+              <input type="text" id="setting-custom-prompt" name="moment_prompt" placeholder="e.g. Prioritize crypto debate moments, funny reactions, or business advice..." 
+                class="w-full bg-[#0a0a0f] text-gray-200 text-sm px-3.5 py-2.5 rounded-xl border border-brand-border focus:border-brand-lime focus:outline-none">
+            </div>
+
+          </div>
+
+          <!-- Action Button -->
+          <button type="submit" class="w-full bg-brand-lime hover:bg-brand-limeDark text-black font-black text-base py-4 rounded-xl shadow-xl shadow-brand-lime/20 transition-all flex items-center justify-center gap-3 transform hover:scale-[1.01]">
+            <i class="fa-solid fa-bolt text-lg"></i>
+            <span>Generate Viral Clips Now</span>
+          </button>
+
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ================= 3. LIVE PROCESSING MODAL / VIEW ================= -->
+    
+</main>
+<footer class="border-t border-brand-border/60 bg-[#07070b] py-8 px-4 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-white">JpClips AI</span>
+        <span>•</span>
+        <span>Built with Groq Whisper & Llama 3.3, YuNet OpenCV, and FFmpeg</span>
+      </div>
+      <div class="flex items-center gap-4">
+        
+        <a href="/" class="hover:text-white">Home</a>
+        <a href="/dashboard" class="hover:text-white">Create Clips</a>
+      </div>
+    </div>
+  </footer>
+
 <script>
-const MAP={none:'none',karaoke:'hormozi1',mozi:'hormozi2',deepdiver:'hormozi3',youshaei:'hormozi2',podp:'minimal',beasty:'beast',simple:'minimal',popline:'leon',thinkmedia:'beast'};
-document.querySelectorAll('#caps input').forEach(r=>r.addEventListener('change',()=>{
-document.getElementById('capstyle').value=MAP[r.value]||'hormozi1';}));
-function mode(m){document.getElementById('clipmode').value=m;
-document.getElementById('tAi').classList.toggle('on',m=='ai');
-document.getElementById('tMan').classList.toggle('on',m=='manual');
-document.getElementById('aiOpts').style.display=m=='ai'?'block':'none';}
-// timeframe dual slider
-const DUR={{ (src.duration or 0)|int }};
-function fmt(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
-return h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0');}
-const tfs=document.getElementById('tfs'),tfe=document.getElementById('tfe');
-if(tfs&&tfe){function upd(){let a=+tfs.value,b=+tfe.value;if(a>b-5){if(document.activeElement==tfs)a=b-5;else b=a+5;tfs.value=a;tfe.value=b;}
-const full=+tfs.max||1;
-document.getElementById('tffill').style.left=(a/full*100)+'%';
-document.getElementById('tffill').style.width=((b-a)/full*100)+'%';
-document.getElementById('tfsL').textContent=fmt(a);document.getElementById('tfeL').textContent=fmt(b);
-document.getElementById('tfsV').value=(a<=0?'':a);document.getElementById('tfeV').value=(b>=full?'':b);}
-tfs.addEventListener('input',upd);tfe.addEventListener('input',upd);upd();}
-// save/restore defaults
-function saveDef(){const d={};new FormData(document.getElementById('f')).forEach((v,k)=>{if(k!=='wf_token'&&k!=='youtube_url')d[k]=v;});
-localStorage.setItem('clipai_def',JSON.stringify(d));alert('Settings saved as default ✓');}
-(function(){try{const d=JSON.parse(localStorage.getItem('clipai_def')||'null');if(!d)return;
-const f=document.getElementById('f');
-for(const k in d){const el=f.elements[k];if(!el)continue;
-if(el.type=='checkbox')el.checked=d[k]=='on';else if(el.type=='radio'){const r=f.querySelector(`input[name=${k}][value="${d[k]}"]`);if(r)r.checked=true;}
-else el.value=d[k];}
-const cap=f.querySelector('input[name=cap]:checked');if(cap)document.getElementById('capstyle').value=MAP[cap.value]||'hormozi1';
-}catch(e){}})();
-document.getElementById('f').addEventListener('submit',()=>{const b=document.getElementById('go');b.disabled=true;b.textContent='⏳ Starting…';});
-</script></body></html>
+(function(){
+  var path = window.location.pathname;
+  var id = null;
+  if (path === '/' ) id = 'nav-landing';
+  else if (path === '/dashboard' || path === '/workflow') id = 'nav-workflow';
+  else if (path === '/jobs' || path.indexOf('/job') === 0) id = 'nav-jobs';
+  if (id) {
+    var el = document.getElementById(id);
+    if (el) { el.classList.remove('text-gray-400'); el.classList.add('text-white','bg-brand-border/60'); }
+  }
+  // Fix nav links: ensure they're <a> tags with href
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    if (b.tagName === 'BUTTON') {
+      var a = document.createElement('a');
+      a.className = b.className; a.id = b.id; a.innerHTML = b.innerHTML;
+      if (b.id === 'nav-landing') a.href = '/';
+      else if (b.id === 'nav-workflow') a.href = '/dashboard';
+      else if (b.id === 'nav-jobs') a.href = '/jobs';
+      b.parentNode.replaceChild(a, b);
+    }
+  });
+})();
+</script>
+
+
+<script>
+var JPCLIPS_SRC = {{ src|tojson }};
+(function(){
+  // Caption preset selection
+  window.activePreset = 'hormozi1';
+  window.selectPreset = function(name){
+    window.activePreset = name;
+    document.querySelectorAll('.caption-preset-btn').forEach(function(b){
+      b.classList.remove('border-brand-lime','border-2');
+      b.classList.add('border-brand-border');
+    });
+    var el = document.getElementById('preset-'+name);
+    if (el) { el.classList.add('border-brand-lime','border-2'); el.classList.remove('border-brand-border'); }
+    var hidden = document.getElementById('caption-preset-input');
+    if (hidden) hidden.value = name;
+  };
+  // Wrap settings in a form
+  var section = document.getElementById('view-workflow');
+  var form = document.createElement('form');
+  form.action = '/start'; form.method = 'POST';
+  form.id = 'workflow-form';
+  // Move all setting inputs into form - actually wrap the whole section content
+  // Simpler: create form and move the settings grid into it
+  var settingsGrid = section.querySelector('.grid');
+  // Instead, we'll intercept the submit button
+  var submitBtn = section.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      var fd = new FormData();
+      // Video source from backend
+      var src = window.JPCLIPS_SRC || {};
+      if (src.token) fd.append('wf_token', src.token);
+      if (src.url) fd.append('youtube_url', src.url);
+      fd.append('source_name', src.title || 'video');
+      // Settings
+      var lang = document.getElementById('setting-language');
+      var dur = document.getElementById('setting-duration');
+      var thresh = document.getElementById('setting-threshold');
+      var layout = document.getElementById('setting-layout');
+      var capPos = document.getElementById('setting-caption-pos');
+      var prompt = document.getElementById('setting-custom-prompt');
+      if (lang) fd.append('speech_lang', lang.value);
+      if (dur) fd.append('clip_duration', dur.value);
+      if (thresh) fd.append('min_score', thresh.value);
+      if (layout) fd.append('layout_mode', layout.value);
+      if (capPos) fd.append('caption_pos', capPos.value);
+      if (prompt) fd.append('moment_prompt', prompt.value);
+      fd.append('caption_preset', window.activePreset || 'hormozi1');
+      fd.append('n_clips', '3');
+      fd.append('provider', 'openai');
+      fd.append('face_track', 'on');
+      // Provider keys from localStorage if saved
+      try {
+        var gk = localStorage.getItem('groq_key'); if (gk) fd.append('groq_key', gk);
+        var ok = localStorage.getItem('openai_key'); if (ok) fd.append('openai_key', ok);
+      } catch(e){}
+      fetch('/start', {method:'POST', body:fd, redirect:'follow'})
+        .then(function(r){
+          if (r.redirected) { window.location = r.url; }
+          else { return r.text().then(function(t){ document.open(); document.write(t); document.close(); }); }
+        });
+    });
+  }
+  // Show video source info
+  var src = window.JPCLIPS_SRC || {};
+  var infoEl = document.getElementById('video-source-info');
+  if (!infoEl) {
+    var h1 = section.querySelector('h1');
+    if (h1) {
+      infoEl = document.createElement('div');
+      infoEl.id = 'video-source-info';
+      infoEl.className = 'mt-2 text-sm text-brand-lime';
+      h1.parentNode.appendChild(infoEl);
+    }
+  }
+  if (infoEl && src.title) {
+    infoEl.innerHTML = '<i class="fa-solid fa-video mr-1"></i> Source: ' + src.title +
+      (src.thumb ? ' <img src="'+src.thumb+'" class="inline h-8 rounded ml-2">' : '');
+  }
+})();
+</script>
+
+</body>
+</html>
