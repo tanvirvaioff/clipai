@@ -7,6 +7,7 @@ import mediapipe as mp
 
 GROQ_BASE = "https://api.groq.com/openai/v1"
 OPENAI_BASE = "https://api.openai.com/v1"
+GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 def log(job_dir, msg):
     print("[CLIPAI] %s" % msg, flush=True)
@@ -178,24 +179,39 @@ def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir,
         url = OPENAI_BASE + "/chat/completions"
         model = "gpt-4o"
         key = api_key
+    elif provider == "gemini":
+        url = GEMINI_BASE + "/models/gemini-2.0-flash:generateContent?key=" + api_key
+        model = "gemini-2.0-flash"
+        key = api_key
     else:
         url = GROQ_BASE + "/chat/completions"
         model = "openai/gpt-oss-120b"
         key = api_key
-    payload = {"model": model, "temperature": 0.7,
-               "messages": [
-                   {"role": "system", "content": "You are a viral video editor. Output JSON only."},
-                   {"role": "user", "content": prompt}]}
-    if provider == "openai":
-        payload["response_format"] = {"type": "json_object"}
-    r = requests.post(url, headers={"Authorization": "Bearer " + key,
-                                    "Content-Type": "application/json"},
-                      json=payload, timeout=300)
-    try:
-        j = r.json()
-        txt = j["choices"][0]["message"]["content"]
-    except Exception:
-        return False, "LLM error: %s" % r.text[:300]
+    if provider == "gemini":
+        payload = {"generationConfig": {"temperature": 0.7, "responseMimeType": "application/json"},
+                   "contents": [{"parts": [{"text": "You are a viral video editor. Output JSON only.\n\n" + prompt}]}]}
+        r = requests.post(url, headers={"Content-Type": "application/json"},
+                          json=payload, timeout=300)
+        try:
+            j = r.json()
+            txt = j["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            return False, "LLM error: %s" % r.text[:300]
+    else:
+        payload = {"model": model, "temperature": 0.7,
+                   "messages": [
+                       {"role": "system", "content": "You are a viral video editor. Output JSON only."},
+                       {"role": "user", "content": prompt}]}
+        if provider == "openai":
+            payload["response_format"] = {"type": "json_object"}
+        r = requests.post(url, headers={"Authorization": "Bearer " + key,
+                                        "Content-Type": "application/json"},
+                          json=payload, timeout=300)
+        try:
+            j = r.json()
+            txt = j["choices"][0]["message"]["content"]
+        except Exception:
+            return False, "LLM error: %s" % r.text[:300]
     # extract JSON array
     m = re.search(r"\[.*\]", txt, re.S)
     if not m:
@@ -908,7 +924,13 @@ def run_job(job_dir, video_path, cfg, progress_cb=None):
     provider = cfg.get("provider", "openai")
     groq_key = cfg.get("groq_key", "")
     openai_key = cfg.get("openai_key", "")
-    llm_key = openai_key if provider == "openai" else groq_key
+    gemini_key = cfg.get("gemini_key", "")
+    if provider == "openai":
+        llm_key = openai_key
+    elif provider == "gemini":
+        llm_key = gemini_key
+    else:
+        llm_key = groq_key
     stt_key = openai_key if provider == "openai" else groq_key
     if not llm_key:
         return False, "API key missing"
