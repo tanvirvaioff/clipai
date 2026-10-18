@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% set active = 'generator' %}
+{% block title %}JpClips — create viral shorts{% endblock %}
+
+{% block content %}
+<div class="max-w-[720px] mx-auto px-6 py-12">
+
+  <div class="text-center mb-8">
+    <div class="eyebrow mb-4">01 · clip generator</div>
+    <h1 class="serif-heading text-[52px] leading-tight text-white">create viral shorts</h1>
+    <p class="text-os-muted text-[15px] mt-3">Drop your long-form video below to instantly generate viral clips with AI.</p>
+  </div>
+
+  <form id="genform" action="/start" method="POST" enctype="multipart/form-data">
+    <div class="bg-os-card border border-os-border rounded-2xl p-6">
+
+      <!-- tabs -->
+      <div class="flex gap-6 border-b border-os-border pb-3 mb-5">
+        <button type="button" id="tab-upload" class="flex items-center gap-2 text-[13.5px] font-semibold text-os-orange border-b-2 border-os-orange pb-3 -mb-[13px]">
+          <i class="fa-solid fa-upload text-[12px]"></i> upload file
+        </button>
+        <button type="button" id="tab-url" class="flex items-center gap-2 text-[13.5px] font-medium text-os-muted hover:text-white border-b-2 border-transparent pb-3 -mb-[13px] transition-colors">
+          <i class="fa-solid fa-link text-[12px]"></i> video url
+        </button>
+      </div>
+
+      <!-- upload pane -->
+      <div id="pane-upload">
+        <label for="videofile" id="dropzone" class="block border-[1.5px] border-dashed border-os-orange/60 rounded-xl px-6 py-7 text-center cursor-pointer hover:border-os-orange hover:bg-os-orange/[.03] transition-all">
+          <div id="dz-empty">
+            <i class="fa-solid fa-cloud-arrow-up text-os-orange text-2xl mb-2"></i>
+            <div class="text-[14px] text-gray-300 font-medium">Drop your video here, or <span class="text-os-orange underline">browse</span></div>
+            <div class="text-[12px] text-os-faint mt-1">MP4, MOV, WebM · up to 2GB</div>
+          </div>
+          <div id="dz-file" class="hidden items-center justify-center gap-2">
+            <i class="fa-solid fa-file-video text-emerald-400"></i>
+            <span id="dz-filename" class="text-emerald-400 text-[14px] font-medium truncate max-w-[420px]"></span>
+            <button type="button" id="dz-clear" class="text-os-muted hover:text-white ml-1"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </label>
+        <input type="file" id="videofile" name="video" accept="video/*" class="hidden">
+      </div>
+
+      <!-- url pane -->
+      <div id="pane-url" class="hidden">
+        <input type="url" name="youtube_url" id="yturl" placeholder="https://www.youtube.com/watch?v=…" class="os-input w-full px-4 py-3.5 text-[14px] placeholder:text-os-faint">
+        <p class="text-[12px] text-os-faint mt-2"><i class="fa-solid fa-triangle-exclamation text-os-orange/70 mr-1"></i> YouTube downloads may be blocked on datacenter IPs — uploading the file directly always works.</p>
+      </div>
+
+      <!-- output format -->
+      <div class="eyebrow mt-7 mb-3 text-center">output format</div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="fmt-card selected bg-os-card2 border border-os-border rounded-xl py-4 px-2 text-center" data-fmt="916">
+          <div class="mx-auto mb-2 w-[18px] h-[32px] border-2 border-os-orange rounded-[4px]"></div>
+          <div class="text-[13px] font-bold text-white">9:16</div>
+          <div class="text-[11px] text-os-muted mt-0.5">Shorts · Reels · TikTok</div>
+        </div>
+        <div class="fmt-card bg-os-card2 border border-os-border rounded-xl py-4 px-2 text-center" data-fmt="11">
+          <div class="mx-auto mb-2 w-[26px] h-[26px] border-2 border-os-muted rounded-[4px]"></div>
+          <div class="text-[13px] font-bold text-white">1:1</div>
+          <div class="text-[11px] text-os-muted mt-0.5">Feed posts</div>
+        </div>
+        <div class="fmt-card bg-os-card2 border border-os-border rounded-xl py-4 px-2 text-center" data-fmt="169">
+          <div class="mx-auto mb-2 w-[40px] h-[22px] border-2 border-os-muted rounded-[4px]"></div>
+          <div class="text-[13px] font-bold text-white">16:9</div>
+          <div class="text-[11px] text-os-muted mt-0.5">Keep landscape · YouTube</div>
+        </div>
+      </div>
+      <input type="hidden" name="output_format" id="output_format" value="916">
+
+      <!-- advanced options -->
+      <button type="button" id="adv-toggle" class="flex items-center gap-2 text-[13px] text-os-muted hover:text-white mt-6 mb-1 transition-colors">
+        <i class="fa-solid fa-chevron-down text-[10px]" id="adv-chev"></i> advanced options
+      </button>
+      <div id="adv-body" class="hidden mt-3 space-y-4 border-t border-os-border pt-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="eyebrow !text-[10px] block mb-2">number of clips</label>
+            <select name="n_clips" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+              <option value="1">1 clip</option>
+              <option value="2">2 clips</option>
+              <option value="3" selected>3 clips</option>
+              <option value="5">5 clips</option>
+              <option value="8">8 clips</option>
+              <option value="10">10 clips</option>
+            </select>
+          </div>
+          <div>
+            <label class="eyebrow !text-[10px] block mb-2">clip length</label>
+            <select name="clip_length" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+              <option value="auto" selected>Auto (15–60s)</option>
+              <option value="0-30s">Short (10–30s)</option>
+              <option value="30-60s">Medium (30–60s)</option>
+              <option value="60-180s">Long (60–180s)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="eyebrow !text-[10px] block mb-2">caption style</label>
+            <select name="caption_style" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+              <option value="hormozi1" selected>Hormozi 1</option>
+              <option value="hormozi2">Hormozi 2</option>
+              <option value="hormozi3">Hormozi 3</option>
+              <option value="beast">Beast</option>
+              <option value="leon">Leon</option>
+              <option value="minimal">Minimal</option>
+              <option value="none">No captions</option>
+            </select>
+          </div>
+          <div>
+            <label class="eyebrow !text-[10px] block mb-2">caption position</label>
+            <select name="caption_pos" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+              <option value="top">Top</option>
+              <option value="middle" selected>Middle</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="eyebrow !text-[10px] block mb-2">speech language</label>
+            <select name="speech_lang" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+              <option value="en" selected>English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="pt">Portuguese</option>
+              <option value="hi">Hindi</option>
+              <option value="bn">Bengali</option>
+              <option value="ar">Arabic</option>
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+              <option value="zh">Chinese</option>
+              <option value="ru">Russian</option>
+              <option value="it">Italian</option>
+              <option value="nl">Dutch</option>
+              <option value="tr">Turkish</option>
+              <option value="auto">Auto-detect</option>
+            </select>
+          </div>
+          <div>
+            <label class="eyebrow !text-[10px] block mb-2">ai provider</label>
+            <select name="provider" id="provider" class="os-select w-full px-3 py-2.5 text-[13.5px]">
+              <option value="groq" selected>⚡ Groq (FREE)</option>
+              <option value="openai">🧠 OpenAI (Recommended ⭐)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="eyebrow !text-[10px] block mb-2">api keys <span class="normal-case tracking-normal text-os-faint">(saved in your browser only)</span></label>
+          <div class="grid grid-cols-2 gap-4">
+            <input type="password" id="groq_key" name="groq_key" placeholder="Groq key (gsk_…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
+            <input type="password" id="openai_key" name="openai_key" placeholder="OpenAI key (sk-…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
+          </div>
+        </div>
+        <div>
+          <label class="eyebrow !text-[10px] block mb-2">what to look for <span class="normal-case tracking-normal text-os-faint">(optional — injected into the AI prompt)</span></label>
+          <input type="text" name="moment_prompt" placeholder="e.g. only the arguments about pricing, ignore the intro" class="os-input w-full px-3 py-2.5 text-[13px] placeholder:text-os-faint">
+        </div>
+      </div>
+
+      <!-- confirm -->
+      <label class="flex items-start gap-3 mt-6 cursor-pointer">
+        <input type="checkbox" id="confirm" class="os-check mt-0.5">
+        <span class="text-[12.5px] text-os-muted leading-relaxed">I confirm I own this content or have the rights to process it. I am responsible for any content I submit. See our <span class="underline">Terms</span> and <span class="underline">Privacy Policy</span>.</span>
+      </label>
+
+      <!-- submit -->
+      <button type="submit" id="genbtn" disabled class="btn-orange w-full rounded-full py-4 text-[15px] mt-5">
+        generate clips
+      </button>
+    </div>
+  </form>
+
+  <div class="flex items-center justify-center gap-6 mt-8 text-os-muted text-[13px]">
+    <span class="flex items-center gap-2"><i class="fa-brands fa-youtube"></i> YouTube</span>
+    <span class="flex items-center gap-2"><i class="fa-brands fa-instagram"></i> Instagram</span>
+    <span class="flex items-center gap-2"><i class="fa-brands fa-tiktok"></i> TikTok</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  var tabU = document.getElementById('tab-upload'), tabL = document.getElementById('tab-url');
+  var paneU = document.getElementById('pane-upload'), paneL = document.getElementById('pane-url');
+  var fileInput = document.getElementById('videofile'), dzFile = document.getElementById('dz-file');
+  var dzEmpty = document.getElementById('dz-empty'), dzName = document.getElementById('dz-filename');
+  var genbtn = document.getElementById('genbtn'), confirm = document.getElementById('confirm');
+  var yturl = document.getElementById('yturl');
+  var mode = 'upload';
+
+  function setTab(m){
+    mode = m;
+    var u = m === 'upload';
+    paneU.classList.toggle('hidden', !u); paneL.classList.toggle('hidden', u);
+    tabU.className = 'flex items-center gap-2 text-[13.5px] font-' + (u?'semibold text-os-orange':'medium text-os-muted hover:text-white') + ' border-b-2 ' + (u?'border-os-orange':'border-transparent') + ' pb-3 -mb-[13px] transition-colors';
+    tabL.className = 'flex items-center gap-2 text-[13.5px] font-' + (!u?'semibold text-os-orange':'medium text-os-muted hover:text-white') + ' border-b-2 ' + (!u?'border-os-orange':'border-transparent') + ' pb-3 -mb-[13px] transition-colors';
+    validate();
+  }
+  tabU.onclick = function(){ setTab('upload'); };
+  tabL.onclick = function(){ setTab('url'); };
+
+  fileInput.addEventListener('change', function(){
+    if (fileInput.files.length){
+      dzName.textContent = fileInput.files[0].name;
+      dzEmpty.classList.add('hidden'); dzFile.classList.remove('hidden'); dzFile.classList.add('flex');
+    }
+    validate();
+  });
+  document.getElementById('dz-clear').onclick = function(e){
+    e.preventDefault(); e.stopPropagation();
+    fileInput.value = '';
+    dzEmpty.classList.remove('hidden'); dzFile.classList.add('hidden'); dzFile.classList.remove('flex');
+    validate();
+  };
+  // drag & drop
+  var dz = document.getElementById('dropzone');
+  ['dragover','dragenter'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add('border-os-orange','bg-os-orange/[.06]'); }); });
+  ['dragleave','drop'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove('border-os-orange','bg-os-orange/[.06]'); }); });
+  dz.addEventListener('drop', function(e){
+    if (e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; fileInput.dispatchEvent(new Event('change')); }
+  });
+
+  yturl.addEventListener('input', validate);
+  confirm.addEventListener('change', validate);
+  function validate(){
+    var hasSrc = (mode === 'upload' && fileInput.files.length > 0) || (mode === 'url' && yturl.value.trim().length > 8);
+    genbtn.disabled = !(hasSrc && confirm.checked);
+  }
+
+  // format cards
+  document.querySelectorAll('.fmt-card').forEach(function(c){
+    c.addEventListener('click', function(){
+      document.querySelectorAll('.fmt-card').forEach(function(x){ x.classList.remove('selected'); });
+      c.classList.add('selected');
+      document.getElementById('output_format').value = c.getAttribute('data-fmt');
+    });
+  });
+
+  // advanced toggle
+  var advT = document.getElementById('adv-toggle'), advB = document.getElementById('adv-body'), advC = document.getElementById('adv-chev');
+  advT.onclick = function(){
+    var hidden = advB.classList.toggle('hidden');
+    advC.style.transform = hidden ? '' : 'rotate(180deg)';
+  };
+
+  // persist keys
+  try {
+    var gk = localStorage.getItem('groq_key'), ok = localStorage.getItem('openai_key');
+    if (gk) document.getElementById('groq_key').value = gk;
+    if (ok) document.getElementById('openai_key').value = ok;
+  } catch(e){}
+  document.getElementById('genform').addEventListener('submit', function(){
+    try {
+      var g = document.getElementById('groq_key').value.trim();
+      var o = document.getElementById('openai_key').value.trim();
+      if (g) localStorage.setItem('groq_key', g);
+      if (o) localStorage.setItem('openai_key', o);
+    } catch(e){}
+    genbtn.disabled = true;
+    genbtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> starting…';
+  });
+})();
+</script>
+{% endblock %}
