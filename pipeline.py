@@ -813,7 +813,7 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
             shutil.copyfile(ass, safe_ass)
         except Exception:
             safe_ass = ass
-        sub = "subtitles='%s':fontsdir='%s'" % (safe_ass, _FONTS)
+        sub = "subtitles=%s:fontsdir=%s" % (safe_ass, _FONTS)
     # auto-zoom: subtle 1.0 -> 1.08 push-in over the clip (Submagic-style)
     # zoompan needs oversized input, so prescale to 1296x2304 when zoom is on
     zfilter = ""
