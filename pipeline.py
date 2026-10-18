@@ -180,8 +180,8 @@ def find_moments(provider, api_key, words, n_clips, lo, hi, job_dir,
         model = "gpt-4o"
         key = api_key
     elif provider == "gemini":
-        url = GEMINI_BASE + "/models/gemini-3-flash-preview:generateContent?key=" + api_key
-        model = "gemini-3-flash-preview"
+        url = GEMINI_BASE + "/models/gemini-1.5-flash:generateContent?key=" + api_key
+        model = "gemini-1.5-flash"
         key = api_key
     else:
         url = GROQ_BASE + "/chat/completions"
