@@ -96,6 +96,9 @@ h2.sec{font-size:16px;font-weight:700;margin:0 0 18px;color:var(--txt)}
 <div class="dcard" onclick="sample()"><div class="th">🎸<span class="pl">▶</span></div><div class="bd"><b>Music Interview #408</b><span>25 clips</span></div></div>
 </div>
 
+<h2 class="sec" style="margin-top:44px">Recent projects</h2>
+<div class="cards" id="recent"><div class="dcard"><div class="bd"><span>Loading…</span></div></div></div>
+
 <h2 class="sec" style="margin-top:44px">Master JpClips</h2>
 <div class="learn">
 <div class="lcard"><div class="th">Turn Any Video<br>Into Viral Shorts</div></div>
@@ -111,4 +114,19 @@ document.getElementById('f').addEventListener('submit',ev=>{
   else{document.getElementById('hint').textContent='⏳ Loading video…';}
 });
 function sample(){document.getElementById('hint').textContent='Upload your own video to get started — samples coming soon';}
+async function recent(){
+  try{
+    const r=await fetch("/api/jobs"); const j=await r.json();
+    const box=document.getElementById('recent');
+    const items=(j.jobs||[]).slice(0,3);
+    if(!items.length){box.innerHTML='<div class="dcard"><div class="bd"><b>No projects yet</b><span>Paste a link above to start</span></div></div>';return;}
+    const dot={done:"🟢",running:"🟣",queued:"🟡",error:"🔴"};
+    box.innerHTML=items.map(x=>{
+      const st=x.status||"queued";
+      const info=st==="done"?`${x.nclips} clips` : st==="running"?`${x.progress||0}% · ${esc(x.step||"")}` : st;
+      return `<div class="dcard" onclick="location.href='/job/${x.jid}'"><div class="th">${dot[st]||"⚪"}<span class="pl">▶</span></div><div class="bd"><b>${esc(x.name)}</b><span>${esc(info)}</span></div></div>`;
+    }).join("");
+  }catch(e){}
+}
+recent();
 </script></body></html>
