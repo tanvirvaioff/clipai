@@ -95,7 +95,7 @@ body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSys
 <input type="hidden" name="youtube_url" value="{{ src.url or '' }}">
 <input type="hidden" name="source_kind" value="{{ src.kind }}">
 <input type="hidden" name="source_name" value="{{ src.title or 'video' }}">
-<input type="hidden" name="provider" value="groq">
+<input type="hidden" name="provider" value="openai">
 <input type="hidden" name="caption_style" id="capstyle" value="hormozi1">
 
 <div class="vthumb">
@@ -194,8 +194,9 @@ body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSys
 
 <details class="adv"><summary>⚙️ Advanced (AI provider & keys)</summary><div class="in">
 <select name="provider_x" id="provx" onchange="document.querySelector('[name=provider]').value=this.value">
-<option value="groq" selected>⚡ Groq (FREE)</option><option value="openai">🧠 OpenAI (best)</option>
+<option value="openai" selected>🧠 OpenAI (Recommended ⭐)</option><option value="groq">⚡ Groq (FREE)</option>
 </select>
+<div style="font-size:11px;color:#9a9ab0;margin:8px 0 10px;line-height:1.5">⭐ <b style="color:#f1f1f4">OpenAI recommended:</b> smarter viral-moment picks & more accurate transcripts. Groq is free but picks slightly weaker moments.</div>
 <input type="text" name="groq_key" placeholder="gsk-... (Groq key, or server default)">
 <input type="text" name="openai_key" placeholder="sk-... (OpenAI key)">
 </div></details>
