@@ -3,6 +3,7 @@
 """ClipAI pipeline: transcribe -> viral moments -> face-tracked 9:16 clips + karaoke captions."""
 import os, json, re, math, subprocess, tempfile, requests
 import cv2
+import mediapipe as mp
 
 GROQ_BASE = "https://api.groq.com/openai/v1"
 OPENAI_BASE = "https://api.openai.com/v1"
@@ -255,8 +256,7 @@ def _parse_subs(mo):
                "value": q + (1 if r > 2 else 0), "trend": q}
     return out
 
-# ---------------- face tracking (YuNet) ----------------
-_YUNET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "yunet.onnx")
+# ---------------- face tracking (MediaPipe) ----------------
 _FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
 def _frame_hist_diff(prev_hist, frame):
@@ -286,7 +286,11 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
     """
     MAXF = 4
     MIN_RATIO = 0.25
-    detector = cv2.FaceDetectorYN_create(_YUNET, "", (320, 320))
+    # MediaPipe face detection (OpenShorts-style): full-range model handles
+    # profile/side faces, low light and partial occlusions far better
+    # than YuNet. model_selection=1 = full range (faces at any distance).
+    mp_detector = mp.solutions.face_detection.FaceDetection(
+        model_selection=1, min_detection_confidence=0.5)
     cap = cv2.VideoCapture(video_path)
     # samples: (t_rel, n, [(x, y), ...], is_cut)
     samples = []
@@ -304,20 +308,28 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
         small = cv2.resize(frame, (64, 36))
         diff, prev_hist = _frame_hist_diff(prev_hist, small)
         is_cut = diff > 2.5  # tuned threshold for hard cuts
-        detector.setInputSize((w, h))
-        _, faces = detector.detect(frame)
+        res = mp_detector.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         raw = []
-        if faces is not None and len(faces):
-            order = sorted(faces, key=lambda b: b[2] * b[3], reverse=True)
+        boxes = []
+        if res.detections:
+            for d in res.detections:
+                bb = d.location_data.relative_bounding_box
+                boxes.append((bb.xmin * w, bb.ymin * h,
+                              bb.width * w, bb.height * h))
+        if boxes:
+            order = sorted(boxes, key=lambda b: b[2] * b[3], reverse=True)
             a0 = order[0][2] * order[0][3]
-            for f in order[:MAXF]:
-                if f[2] * f[3] < MIN_RATIO * a0:
+            for (x0, y0, bwf, bhf) in order[:MAXF]:
+                if bwf * bhf < MIN_RATIO * a0:
                     break
-                raw.append((float(f[0] + f[2] / 2) / w * vw,
-                            float(f[1] + f[3] / 2) / h * vh_src))
+                # MediaPipe boxes can extend past frame edges — clamp center
+                cx = min(max(x0 + bwf / 2, 0), w)
+                cy = min(max(y0 + bhf / 2, 0), h)
+                raw.append((cx / w * vw, cy / h * vh_src))
         samples.append((t - start, len(raw), raw, is_cut))
         t += step
     cap.release()
+    mp_detector.close()
     if not samples:
         return [(0.0, 0, [])]
 
