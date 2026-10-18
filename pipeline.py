@@ -609,7 +609,7 @@ def write_ass(job_dir, words, start, end, path, style="hormozi", max_chars=30,
     leon (orange highlight on black boxes), minimal (small white).
     'hormozi' is an alias for hormozi1. pos: top / middle / bottom.
     emphasis: list of lowercase LLM-marked words -> green keyword highlight."""
-    if style == "hormozi":
+    if style == "hormozi" or style == "auto":
         style = "hormozi1"
     extra_kw = set(w.lower() for w in (emphasis or []) if w)
     # caption placement: (ASS alignment, MarginV)
