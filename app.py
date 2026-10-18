@@ -370,5 +370,15 @@ def dl(jid, fn):
 def preview(jid, fn):
     return send_from_directory(os.path.join(JOBS, jid, "clips"), fn)
 
+@app.route("/source/<jid>")
+def source_video(jid):
+    meta = _read_meta(jid)
+    vp = meta.get("video_path", "")
+    if vp and os.path.exists(vp):
+        d = os.path.dirname(vp)
+        f = os.path.basename(vp)
+        return send_from_directory(d, f)
+    return "not found", 404
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), threaded=True)
