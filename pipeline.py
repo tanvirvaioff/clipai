@@ -270,22 +270,25 @@ def _frame_hist_diff(prev_hist, frame):
 
 
 def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
-    """Return smoothed face-center positions: list of (time, x, y, n_faces, x2, y2).
+    """Return smoothed face positions: list of (t_rel, n_faces, [(x, y), ...]).
 
-    Tracks BOTH x and y so the 9:16 crop follows the face vertically too.
-    Also returns face count + 2nd face position for SPLIT mode detection.
+    Tracks up to 4 faces (ranked by size, largest first). Rank 0 gets
+    hysteresis + slew-rate limiting; ranks 1-3 get exponential follow.
+    Extra faces must be >=25% of the largest face area to count.
 
     Improvements (OpenShorts-inspired):
     - scene cut detection: histogram comparison resets tracker on cuts
       (no smoothing across cuts — avoids "ghost pan" artifacts)
-    - 2-face detection: returns 2nd largest face for split layout
+    - multi-face: up to 4 faces for split2/grid3/grid4 layouts
     - exponential smoothing (alpha=0.3): responsive yet smooth
-    - hysteresis: only switch faces after 2+ seconds consistency
+    - hysteresis: rank-0 only switches faces after 2+ seconds consistency
     - no-face: KEEP last position (never jump to center)
     """
+    MAXF = 4
+    MIN_RATIO = 0.25
     detector = cv2.FaceDetectorYN_create(_YUNET, "", (320, 320))
     cap = cv2.VideoCapture(video_path)
-    # samples: (t_rel, x, y, n_faces, x2, y2, is_cut)
+    # samples: (t_rel, n, [(x, y), ...], is_cut)
     samples = []
     prev_hist = None
     t = start
@@ -293,7 +296,7 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
         cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
         ok, frame = cap.read()
         if not ok:
-            samples.append((t - start, None, None, 0, None, None, False))
+            samples.append((t - start, 0, [], False))
             t += step
             continue
         h, w = frame.shape[:2]
@@ -303,59 +306,54 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
         is_cut = diff > 2.5  # tuned threshold for hard cuts
         detector.setInputSize((w, h))
         _, faces = detector.detect(frame)
+        raw = []
         if faces is not None and len(faces):
-            # sort by area desc; take top 2
             order = sorted(faces, key=lambda b: b[2] * b[3], reverse=True)
-            f1 = order[0]
-            x = float(f1[0] + f1[2] / 2) / w * vw
-            y = float(f1[1] + f1[3] / 2) / h * vh_src
-            n = len(order)
-            x2 = y2 = None
-            if n >= 2:
-                f2 = order[1]
-                # only count as 2nd face if reasonably large (>25% of largest)
-                if f2[2] * f2[3] >= 0.25 * f1[2] * f1[3]:
-                    x2 = float(f2[0] + f2[2] / 2) / w * vw
-                    y2 = float(f2[1] + f2[3] / 2) / h * vh_src
-                else:
-                    n = 1
-            samples.append((t - start, x, y, n, x2, y2, is_cut))
-        else:
-            samples.append((t - start, None, None, 0, None, None, is_cut))
+            a0 = order[0][2] * order[0][3]
+            for f in order[:MAXF]:
+                if f[2] * f[3] < MIN_RATIO * a0:
+                    break
+                raw.append((float(f[0] + f[2] / 2) / w * vw,
+                            float(f[1] + f[3] / 2) / h * vh_src))
+        samples.append((t - start, len(raw), raw, is_cut))
         t += step
     cap.release()
     if not samples:
-        return [(0.0, vw / 2, vh_src / 2, 0, None, None)]
+        return [(0.0, 0, [])]
 
-    # Stage 1: hysteresis target selection with scene-cut resets
+    # Stage 1: hysteresis for rank 0, scene-cut resets, follow for ranks 1-3
     REGION_X = vw * 0.18
     REGION_Y = vh_src * 0.18
     HYST_N = max(2, int(2.0 / step) + 1)
-    tx = samples[0][1] if samples[0][1] is not None else vw / 2
-    ty = samples[0][2] if samples[0][2] is not None else vh_src / 2
-    # 2nd face tracking (for split mode)
-    t2x = samples[0][4] if samples[0][4] is not None else vw / 2
-    t2y = samples[0][5] if samples[0][5] is not None else vh_src / 2
-    pend = [None, 0]
-    pendy = [None, 0]
-    targets = []  # (t_rel, tx, ty, n, t2x, t2y)
-    for t_rel, x, y, n, x2, y2, is_cut in samples:
+
+    def _init(rank):
+        r0 = samples[0][2]
+        if rank < len(r0):
+            return [r0[rank][0], r0[rank][1]]
+        return [vw / 2, vh_src / 2]
+
+    trk = [_init(r) for r in range(MAXF)]
+    pend, pendy = [None, 0], [None, 0]
+    targets = []  # (t_rel, n, [[x, y] x MAXF])
+    for t_rel, n, raw, is_cut in samples:
         if is_cut:
-            # SCENE CUT: snap targets to new detection, clear pending
-            if x is not None:
-                tx, ty = x, y
-            if x2 is not None:
-                t2x, t2y = x2, y2
+            # SCENE CUT: snap to new detections, clear pending
+            for r in range(MAXF):
+                if r < len(raw):
+                    trk[r] = [raw[r][0], raw[r][1]]
             pend, pendy = [None, 0], [None, 0]
-            targets.append((t_rel, tx, ty, n, t2x, t2y))
+            targets.append((t_rel, n, [list(p) for p in trk]))
             continue
-        if x is None:
+        if n == 0:
+            # NO FACE: keep last position, do NOT drift to center
             pend, pendy = [None, 0], [None, 0]
-            targets.append((t_rel, tx, ty, n, t2x, t2y))
+            targets.append((t_rel, n, [list(p) for p in trk]))
             continue
-        # X axis hysteresis
+        x, y = raw[0]
+        tx, ty = trk[0]
+        # rank-0 X hysteresis
         if abs(x - tx) <= REGION_X:
-            tx = 0.75 * tx + 0.25 * x
+            trk[0][0] = 0.75 * tx + 0.25 * x
             pend = [None, 0]
         else:
             if pend[0] is None or abs(x - pend[0]) > REGION_X:
@@ -364,11 +362,11 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
                 pend[1] += 1
                 pend[0] = 0.75 * pend[0] + 0.25 * x
             if pend[1] >= HYST_N:
-                tx = pend[0]
+                trk[0][0] = pend[0]
                 pend = [None, 0]
-        # Y axis hysteresis
+        # rank-0 Y hysteresis
         if abs(y - ty) <= REGION_Y:
-            ty = 0.75 * ty + 0.25 * y
+            trk[0][1] = 0.75 * ty + 0.25 * y
             pendy = [None, 0]
         else:
             if pendy[0] is None or abs(y - pendy[0]) > REGION_Y:
@@ -377,63 +375,83 @@ def face_track_x(video_path, start, end, vw, vh_src, job_dir, step=0.5):
                 pendy[1] += 1
                 pendy[0] = 0.75 * pendy[0] + 0.25 * y
             if pendy[1] >= HYST_N:
-                ty = pendy[0]
+                trk[0][1] = pendy[0]
                 pendy = [None, 0]
-        # 2nd face: simple follow (no hysteresis — split uses averaged pos)
-        if x2 is not None:
-            t2x = 0.7 * t2x + 0.3 * x2
-            t2y = 0.7 * t2y + 0.3 * y2
-        targets.append((t_rel, tx, ty, n, t2x, t2y))
+        # ranks 1-3: exponential follow (grid layouts use averaged positions)
+        for r in range(1, MAXF):
+            if r < len(raw):
+                trk[r][0] = 0.7 * trk[r][0] + 0.3 * raw[r][0]
+                trk[r][1] = 0.7 * trk[r][1] + 0.3 * raw[r][1]
+        targets.append((t_rel, n, [list(p) for p in trk]))
 
-    # Stage 2: slew-rate limit + EXPONENTIAL smoothing (alpha=0.3)
-    # (more responsive than moving average, still smooth)
+    # Stage 2: slew-rate limit (rank 0) + EXPONENTIAL smoothing (all ranks)
     MAX_DX = vw * 0.8 * step
     MAX_DY = vh_src * 0.8 * step
     ALPHA = 0.3
     sm = []
-    px, py = targets[0][1], targets[0][2]
-    p2x, p2y = targets[0][4], targets[0][5]
-    for i, (t_rel, x, y, n, x2f, y2f) in enumerate(targets):
-        # slew-rate limit on primary face
-        dx, dy = x - px, y - py
-        if abs(dx) > MAX_DX:
-            x = px + math.copysign(MAX_DX, dx)
-        if abs(dy) > MAX_DY:
-            y = py + math.copysign(MAX_DY, dy)
-        # exponential smoothing
-        sx = ALPHA * x + (1 - ALPHA) * px
-        sy = ALPHA * y + (1 - ALPHA) * py
-        # 2nd face exponential smoothing
-        s2x = ALPHA * x2f + (1 - ALPHA) * p2x
-        s2y = ALPHA * y2f + (1 - ALPHA) * p2y
-        sm.append((t_rel, sx, sy, n, s2x, s2y))
-        px, py, p2x, p2y = sx, sy, s2x, s2y
+    prev = [list(p) for p in targets[0][2]]
+    for t_rel, n, tpos in targets:
+        cur = []
+        for r in range(MAXF):
+            x, y = tpos[r]
+            px, py = prev[r]
+            if r == 0:
+                dx, dy = x - px, y - py
+                if abs(dx) > MAX_DX:
+                    x = px + math.copysign(MAX_DX, dx)
+                if abs(dy) > MAX_DY:
+                    y = py + math.copysign(MAX_DY, dy)
+            cur.append((ALPHA * x + (1 - ALPHA) * px,
+                        ALPHA * y + (1 - ALPHA) * py))
+        sm.append((t_rel, n, cur))
+        prev = [list(p) for p in cur]
     return sm
 
 
-def is_split_scene(track, step=0.5):
-    """Check if 2 faces are dominant: both visible >3s and >60% of samples.
+def grid_layout(track, step=0.5):
+    """Detect multi-face scenes and pick a layout.
 
-    Returns (is_split, avg_x1, avg_y1, avg_x2, avg_y2) for split layout.
+    Returns (mode, positions):
+      mode: 'single' | 'split2' | 'grid3' | 'grid4'
+      positions: averaged (x, y) per face in size-rank order.
+    A face count k dominates when >=60% of samples show >=k faces for >3s.
+    split2 additionally requires the two faces to be side-by-side
+    (horizontal separation > vertical), otherwise falls back to single.
     """
-    two_face = [s for s in track if s[3] >= 2 and s[4] is not None]
-    if not two_face:
-        return False, 0, 0, 0, 0
-    # need >3 seconds of 2-face presence
-    if len(two_face) * step < 3.0:
-        return False, 0, 0, 0, 0
-    # need >60% of all samples to have 2 faces
-    if len(two_face) < 0.6 * len(track):
-        return False, 0, 0, 0, 0
-    # average positions for stable split
-    ax1 = sum(s[1] for s in two_face) / len(two_face)
-    ay1 = sum(s[2] for s in two_face) / len(two_face)
-    ax2 = sum(s[4] for s in two_face) / len(two_face)
-    ay2 = sum(s[5] for s in two_face) / len(two_face)
-    # faces should be side-by-side (horizontal separation > vertical)
-    if abs(ax1 - ax2) < abs(ay1 - ay2) * 0.5:
-        return False, 0, 0, 0, 0
-    return True, ax1, ay1, ax2, ay2
+    if not track:
+        return "single", []
+    total = len(track)
+    at_least = {2: 0, 3: 0, 4: 0}
+    pos_sum = [[0.0, 0.0] for _ in range(4)]
+    pos_cnt = [0, 0, 0, 0]
+    for _t, n, faces in track:
+        for k in (2, 3, 4):
+            if n >= k:
+                at_least[k] += 1
+        for i, (fx, fy) in enumerate(faces[:4]):
+            pos_sum[i][0] += fx
+            pos_sum[i][1] += fy
+            pos_cnt[i] += 1
+    best = 1
+    for k in (4, 3, 2):
+        if at_least[k] >= 0.6 * total and at_least[k] * step >= 3.0:
+            best = k
+            break
+    if best < 2:
+        return "single", []
+    positions = []
+    for i in range(best):
+        if pos_cnt[i] == 0:
+            return "single", []
+        positions.append((pos_sum[i][0] / pos_cnt[i],
+                          pos_sum[i][1] / pos_cnt[i]))
+    if best == 2:
+        (ax1, ay1), (ax2, ay2) = positions
+        # faces should be side-by-side (horizontal separation > vertical)
+        if abs(ax1 - ax2) < abs(ay1 - ay2) * 0.5:
+            return "single", []
+        return "split2", positions
+    return ("grid3" if best == 3 else "grid4"), positions
 
 
 # ---------------- word-highlight captions (ASS) ----------------
@@ -694,50 +712,60 @@ def render_clip(video_path, words, moment, idx, job_dir, out_dir, style="hormozi
     else:
         # smooth face-tracked crop in ONE pass via sendcmd (0.5s samples)
         # (face_track=False → static center crop)
-        # SPLIT MODE: 2 faces side-by-side → stacked vertical layout (OpenShorts-style)
+        # MULTI-SPEAKER GRID: split2 (2 stacked) / grid3 (1+2) / grid4 (2x2)
         if face_track:
             track = face_track_x(video_path, s, e, vw, vh, job_dir, step=0.5)
         else:
             track = []
-        split, sx1, sy1, sx2, sy2 = is_split_scene(track) if track else (False, 0, 0, 0, 0)
-        if split:
-            log(job_dir, "clip %d: SPLIT mode (2 speakers)" % (idx + 1))
-            # two 9:16 crops stacked → 1080x1920 (each 1080x960)
-            # left face → top panel, right face → bottom panel
-            if sx1 > sx2:  # ensure sx1 is left
-                sx1, sy1, sx2, sy2 = sx2, sy2, sx1, sy1
-            c1x = int(max(0, min(vw - cw, sx1 - cw / 2)))
-            c2x = int(max(0, min(vw - cw, sx2 - cw / 2)))
-            # filter_complex: crop each face, scale to 1080x960, vstack
-            fc = (
-                "[0:v]crop=%d:%d:%d:0,scale=1080:960[top];"
-                "[0:v]crop=%d:%d:%d:0,scale=1080:960[bottom];"
-                "[top][bottom]vstack=inputs=2,vstack_out" % (cw, vh, c1x, cw, vh, c2x)
-            )
-            # apply prescale/zoom + subtitles after vstack
+        mode, gpos = grid_layout(track) if track else ("single", [])
+        if mode != "single":
+            log(job_dir, "clip %d: %s mode (%d speakers)" % (idx + 1, mode.upper(), len(gpos)))
+            # panel sizes (must tile exactly 1080x1920) and face ordering
+            if mode == "split2":
+                panels = [(1080, 960), (1080, 960)]          # left→top, right→bottom
+                ordered = sorted(gpos, key=lambda p: p[0])
+                stack = "[p0][p1]vstack=inputs=2"
+            elif mode == "grid3":
+                panels = [(1080, 960), (540, 960), (540, 960)]  # largest on top
+                ordered = [gpos[0]] + sorted(gpos[1:], key=lambda p: p[0])
+                stack = "[p1][p2]hstack=inputs=2[bottom];[p0][bottom]vstack=inputs=2"
+            else:  # grid4: 2x2 reading order
+                panels = [(540, 960)] * 4
+                ordered = sorted(gpos, key=lambda p: (p[1], p[0]))
+                stack = ("[p0][p1]hstack=inputs=2[top];"
+                         "[p2][p3]hstack=inputs=2[bottom];"
+                         "[top][bottom]vstack=inputs=2")
+            # aspect-correct crop per panel (no stretch distortion)
+            fc_parts = []
+            for i, ((fx, _fy), (pw, ph)) in enumerate(zip(ordered, panels)):
+                pcw = int(vh * pw / ph)
+                pcw = max(1, min(vw, pcw))
+                cx = int(max(0, min(vw - pcw, fx - pcw / 2)))
+                fc_parts.append("[0:v]crop=%d:%d:%d:0,scale=%d:%d[p%d]"
+                                % (pcw, vh, cx, pw, ph, i))
+            fc = ";".join(fc_parts) + ";" + stack + ",grid_out"
+            # apply prescale/zoom + subtitles after stacking
             post = ",".join(p for p in ["%s%s" % (prescale, zfilter), sub] if p)
-            if post:
-                fc += "," + post
-            else:
-                fc += ",null"
+            fc += "," + post if post else ",null"
             rc, _, err = run_cmd(["ffmpeg", "-y", "-i", video_path, "-ss", str(s), "-t", str(dur),
                                   "-filter_complex", fc,
-                                  "-map", "[vstack_out]", "-map", "0:a?",
+                                  "-map", "[grid_out]", "-map", "0:a?",
                                   "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                                   "-c:a", "aac", "-b:a", "160k", out])
             if (rc != 0 or not os.path.exists(out)) and os.path.exists(ass):
-                log(job_dir, "clip %d split subtitles FAILED: %s" % (idx + 1, err[-800:]))
+                log(job_dir, "clip %d %s subtitles FAILED: %s" % (idx + 1, mode, err[-800:]))
                 return False, "caption render failed: %s" % err[-300:]
         else:
             cmds = os.path.join(job_dir, "clip%d.cmds" % idx)
             with open(cmds, "w") as f:
-                for tt, x, y, n, x2, y2 in track:
+                for tt, _n, faces in track:
+                    x, y = faces[0] if faces else (vw / 2, vh / 2)
                     cx = int(max(0, min(vw - cw, x - cw / 2)))
                     cy = int(max(0, min(vh - vh, y - vh / 2)))
                     f.write("%.1f crop x %d;\n" % (tt, cx))
                     f.write("%.1f crop y %d;\n" % (tt, cy))
-            t0x = track[0][1] if track else vw / 2
-            t0y = track[0][2] if track else vh / 2
+            _t0 = track[0][2][0] if (track and track[0][2]) else (vw / 2, vh / 2)
+            t0x, t0y = _t0[0], _t0[1]
             init_cx = int(max(0, min(vw - cw, t0x - cw / 2)))
             init_cy = int(max(0, min(vh - vh, t0y - vh / 2)))
             vf = ",".join(p for p in [
