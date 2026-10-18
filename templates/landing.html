@@ -1,130 +1,155 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JpClips — Turn Long Videos Into Viral Shorts</title>
+<title>JpClips — AI-powered video clipping</title>
 <style>
 *{box-sizing:border-box}
-:root{--bg:#171717;--panel:#202020;--panel2:#292929;--line:#353535;--text:#f4f4f4;--muted:#999;--accent:#b9f36b}
-body{margin:0;background:var(--bg);color:var(--text);font:14px Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+:root{--bg:#101014;--panel:#18181d;--panel2:#202027;--line:#2c2c34;--text:#f4f4f4;--muted:#9a9aa3;--accent:#b9f36b;--accent-dim:#3a4429}
+body{margin:0;background:var(--bg);color:var(--text);font:15px Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 a{color:inherit;text-decoration:none}
 button,input{font:inherit}
 /* top nav */
 .topnav{display:flex;justify-content:space-between;align-items:center;padding:18px 32px;max-width:1240px;margin:0 auto}
-.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
-.logo .mark{width:36px;height:36px;border-radius:10px;background:var(--accent);color:#101010;font-weight:900;display:grid;place-items:center;font-size:15px}
-.navlinks{display:flex;gap:26px;color:var(--muted);font-size:13px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
+.logo .mark{width:38px;height:38px;border-radius:50%;background:var(--accent);color:#101010;font-weight:900;display:grid;place-items:center;font-size:17px}
+.navlinks{display:flex;gap:28px;color:var(--muted);font-size:14px}
 .navlinks a:hover{color:#fff}
-.btn{border:0;border-radius:10px;background:#f5f5f5;color:#111;font-weight:750;padding:13px 20px;display:inline-flex;justify-content:center;align-items:center;gap:8px;cursor:pointer;text-decoration:none}
-.btn:hover{background:#e1f9c1}
-.btn.small{padding:9px 14px;border-radius:8px;font-size:12px}
-.btn.primary{background:#f5f5f5}
-.btn.ghost{background:transparent;color:#bbb;border:1px solid #393939}
-/* banner */
-.banner{display:flex;justify-content:center;align-items:center;gap:18px;background:var(--panel);border:1px solid #303030;border-radius:10px;padding:10px 16px;margin:10px auto 42px;max-width:620px;color:#c7c7c7;font-size:12px}
+.btn{border:0;border-radius:12px;background:var(--accent);color:#111;font-weight:750;padding:14px 22px;display:inline-flex;justify-content:center;align-items:center;gap:8px;cursor:pointer;text-decoration:none}
+.btn:hover{filter:brightness(1.08)}
+.btn.small{padding:10px 16px;border-radius:9px;font-size:13px}
+.btn.ghost{background:transparent;color:#ccc;border:1px solid #3a3a42}
+.btn.ghost:hover{border-color:var(--accent);color:#fff}
 /* hero */
-.hero{text-align:center;max-width:850px;margin:0 auto 55px;padding:0 20px}
-.pill{display:inline-block;border:1px solid #3c3c3c;border-radius:20px;padding:7px 14px;color:#c4dca7;font-size:10px;letter-spacing:1.7px;margin-bottom:20px;font-weight:600}
-.hero h1{font-size:clamp(34px,4.5vw,56px);letter-spacing:-2px;line-height:1.06;margin:0 0 16px;font-weight:800}
-.accent{color:var(--accent)}
-.hero>p{color:var(--muted);margin-bottom:28px;font-size:16px}
-.urlbox{display:flex;align-items:center;gap:10px;border:1px solid #4b4b4b;background:#303030;border-radius:18px;padding:7px 7px 7px 18px;min-height:64px;box-shadow:0 0 0 1px #ffffff05;max-width:640px;margin:0 auto}
-.urlbox .link{font-size:20px;color:#aaa}
+.hero{text-align:center;max-width:880px;margin:40px auto 60px;padding:0 20px}
+.hero .brand{font-size:clamp(44px,6vw,72px);font-weight:850;letter-spacing:-2.5px;margin:0 0 6px}
+.hero .tagline{color:var(--accent);font-size:clamp(15px,2vw,20px);font-weight:600;letter-spacing:.3px;margin:0 0 22px}
+.hero .desc{color:#c9c9d1;font-size:clamp(15px,1.8vw,18px);line-height:1.65;max-width:720px;margin:0 auto 30px}
+.hero .desc b{color:#fff}
+.urlbox{display:flex;align-items:center;gap:10px;border:1px solid #3d3d46;background:#1c1c22;border-radius:18px;padding:7px 7px 7px 18px;min-height:64px;max-width:660px;margin:0 auto}
+.urlbox .link{font-size:20px;color:#888}
 .urlbox input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:white;padding:12px;font-size:15px}
-.urlbox input::placeholder{color:#8d8d8d}
-.import-options{display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:center;margin:18px 0 34px;color:#aaa;font-size:13px}
-.import-options a,.import-options label{color:#aaa;cursor:pointer}
-.import-options a:hover,.import-options label:hover{color:white}
-.chips{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
-.chips a{border:1px solid #3a3a3a;border-radius:22px;padding:10px 14px;background:#1c1c1c;color:#d0d0d0;font-size:13px}
-.chips a:hover{border-color:#a6d966;color:#fff}
+.urlbox input::placeholder{color:#7d7d88}
+.import-options{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;margin:20px 0 10px;color:#aaa;font-size:13px}
+.filelimit{color:#6d6d78;font-size:12px;margin-bottom:26px}
+.pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:760px;margin:0 auto}
+.pill-item{border:1px solid #33333c;border-radius:24px;padding:10px 18px;background:#18181e;color:#d5d5dc;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.pill-item:hover{border-color:var(--accent);color:#fff}
 /* sections */
-section{max-width:1240px;margin:0 auto;padding:0 32px 50px}
-.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 18px}
-.section-head h2{margin:0;font-size:22px;font-weight:700}
-.muted{color:var(--muted)}
-.demo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.demo{min-height:180px;border-radius:15px;border:1px solid #373737;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;position:relative;cursor:pointer;transition:.2s}
-.demo:hover{transform:translateY(-3px)}
-.demo:before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#000c,transparent 70%)}
-.demo>*{position:relative}
-.demo small{font-size:10px;letter-spacing:1px;color:#ddd}
-.demo h3{font-size:21px;margin:8px 0}
-.demo p{font-size:12px;margin:0;color:#e0e0e0}
-.teal{background:linear-gradient(135deg,#1b4b5d,#0b9eaa)}
-.blue{background:linear-gradient(135deg,#0649a4,#11a9e4)}
-.purple{background:linear-gradient(135deg,#3a2b52,#9c5c42)}
-.feature-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
-.feature{background:var(--panel);border:1px solid #333;border-radius:13px;padding:20px;min-height:120px}
-.feature b{font-size:14px}
-.feature p{color:var(--muted);line-height:1.5;font-size:12px;margin:8px 0 0}
-/* stats strip */
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:50px}
-.stat{background:var(--panel);border:1px solid #333;border-radius:13px;padding:22px;text-align:center}
-.stat b{font-size:28px;color:var(--accent)}
-.stat p{color:var(--muted);font-size:12px;margin:6px 0 0}
+section{max-width:1240px;margin:0 auto;padding:0 32px 70px}
+.sec-kicker{color:var(--accent);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.sec-title{font-size:clamp(26px,3.4vw,38px);font-weight:800;letter-spacing:-1px;margin:0 0 12px}
+.sec-sub{color:var(--muted);font-size:15px;line-height:1.6;max-width:640px;margin:0 0 28px}
+/* example batch */
+.batch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.batch-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:.2s;cursor:pointer}
+.batch-card:hover{transform:translateY(-4px);border-color:#4a4a55}
+.batch-thumb{aspect-ratio:9/13;background:linear-gradient(135deg,#23232b,#141419);position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:18px}
+.batch-thumb:before{content:"▶";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:#ffffff22;border:1px solid #ffffff44;display:grid;place-items:center;font-size:20px;color:#fff}
+.score-badge{position:absolute;top:12px;right:12px;background:var(--accent);color:#111;font-weight:800;font-size:13px;border-radius:10px;padding:5px 10px}
+.batch-body{padding:16px 18px}
+.batch-body h3{margin:0 0 6px;font-size:16px;font-weight:700}
+.batch-body .time{color:var(--muted);font-size:13px}
+.batch-body .hook{color:#c9c9d1;font-size:13px;font-style:italic;margin:8px 0 0;line-height:1.5}
+/* how it works */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
+.step .num{font-size:13px;font-weight:800;color:var(--accent);letter-spacing:2px;margin-bottom:12px}
+.step h3{margin:0 0 10px;font-size:19px;font-weight:750}
+.step p{color:var(--muted);font-size:14px;line-height:1.65;margin:0}
+/* built for creators */
+.creator-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.creator-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
+.creator-card .icon{font-size:26px;margin-bottom:14px}
+.creator-card h3{margin:0 0 10px;font-size:17px;font-weight:750}
+.creator-card p{color:var(--muted);font-size:14px;line-height:1.65;margin:0}
 /* footer */
-footer{border-top:1px solid #2b2b2b;margin-top:30px}
-.foot{max-width:1240px;margin:0 auto;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px}
-@media(max-width:850px){.feature-grid{grid-template-columns:repeat(2,1fr)}.demo-grid{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr}.navlinks{display:none}}
-@media(max-width:580px){.urlbox{flex-wrap:wrap;border-radius:13px}.urlbox input{width:calc(100% - 45px);flex:auto}.urlbox .btn{width:100%}.demo-grid,.feature-grid{grid-template-columns:1fr}.topnav{padding:14px 18px}section{padding:0 18px 40px}}
+footer{border-top:1px solid #232329;margin-top:20px}
+.foot{max-width:1240px;margin:0 auto;padding:30px 32px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;flex-wrap:wrap;gap:12px}
+.foot a{color:var(--accent);font-weight:700}
+@media(max-width:850px){.batch-grid,.steps,.creator-grid{grid-template-columns:1fr 1fr}.navlinks{display:none}}
+@media(max-width:580px){.urlbox{flex-wrap:wrap;border-radius:14px}.urlbox input{width:calc(100% - 45px);flex:auto}.urlbox .btn{width:100%}.batch-grid,.steps,.creator-grid{grid-template-columns:1fr}.topnav{padding:14px 18px}section{padding:0 18px 50px}}
 </style></head>
 <body>
 <nav class="topnav">
-  <a class="logo" href="/"><span class="mark">C</span>JpClips</a>
-  <div class="navlinks"><a href="#demos">Demo projects</a><a href="#tools">Features</a><a href="/dashboard">Dashboard</a></div>
-  <a class="btn small" href="/dashboard">Get Started</a>
+  <a class="logo" href="/"><span class="mark">▶</span>JpClips</a>
+  <div class="navlinks"><a href="#batch">Example batch</a><a href="#how">How it works</a><a href="#creators">Features</a><a href="/dashboard">Dashboard</a></div>
+  <a class="btn small" href="/dashboard">Get started</a>
 </nav>
 
-<div class="banner"><span>✦ Turn long videos into scroll-stopping clips with JpClips.</span><a class="btn small" href="/dashboard">Get started</a></div>
-
 <section class="hero" style="padding:0 20px">
-  <div class="pill">AI-POWERED VIDEO CLIPPING</div>
-  <h1>Turn long videos into<br><span class="accent">scroll-stopping clips.</span></h1>
-  <p>One video in. Ready-to-share shorts out.</p>
+  <div class="brand">JpClips</div>
+  <div class="tagline">AI-powered video clipping</div>
+  <p class="desc">Upload a video and JpClips finds the moments that <b>actually go viral</b> — harshly scored, reframed to 9:16 around every face, and captioned in karaoke style. TikTok, Reels and Shorts ready.</p>
   <form class="urlbox" action="/workflow" method="post">
-    <span class="link">↗</span><input name="youtube_url" placeholder="Paste a YouTube link" aria-label="YouTube URL">
-    <button class="btn primary" type="submit">Get clips in 1 click →</button>
+    <span class="link">↗</span><input name="youtube_url" placeholder="Drop a YouTube link, or upload a file below" aria-label="YouTube URL">
+    <button class="btn" type="submit">Get clips in 1 click →</button>
   </form>
   <div class="import-options">
     <label class="btn ghost">📁 Upload video<input type="file" id="heroUpload" accept="video/*" hidden></label>
     <a href="/dashboard">📊 Go to dashboard</a>
-    <a href="#demos">Try a sample project</a>
+    <a href="#batch">✦ Try the example batch</a>
   </div>
-  <div class="chips">
-    <a href="/dashboard">▣ Long video to shorts</a><a href="/dashboard">✂ Edit video</a><a href="/dashboard">▤ AI captions</a><a href="/dashboard">◈ AI producer</a><a href="/dashboard">⌗ AI reframe</a><a href="/dashboard">♫ Auto SFX</a><a href="/dashboard">🎙 Voice dubbing</a><a href="/dashboard">〽 Enhance speech</a>
-  </div>
-</section>
-
-<section>
-  <div class="stats">
-    <div class="stat"><b>10M+</b><p>Clips generated</p></div>
-    <div class="stat"><b>7</b><p>Caption styles</p></div>
-    <div class="stat"><b>16</b><p>Speech languages</p></div>
-  </div>
-</section>
-
-<section id="demos">
-  <div class="section-head"><h2>Start from a demo project</h2><span class="muted">JpClips studio</span></div>
-  <div class="demo-grid">
-    <a class="demo teal" href="/dashboard"><small>CREATOR STORY · 18 CLIPS</small><h3>Creator Highlights</h3><p>Vertical clips · Auto captions</p></a>
-    <a class="demo blue" href="/dashboard"><small>SPORTS · 12 CLIPS</small><h3>Sports Highlights</h3><p>Smart framing · Shorts</p></a>
-    <a class="demo purple" href="/dashboard"><small>PODCAST · 25 CLIPS</small><h3>Podcast Moments</h3><p>Animated captions · Reframe</p></a>
+  <div class="filelimit">Files up to 2 GB · video or audio-only</div>
+  <div class="pills">
+    <span class="pill-item">Long to shorts</span>
+    <span class="pill-item">AI captions</span>
+    <span class="pill-item">AI reframe</span>
+    <span class="pill-item">Viral scoring</span>
+    <span class="pill-item">9:16 export</span>
+    <span class="pill-item">Hooks &amp; headlines</span>
+    <span class="pill-item">SRT download</span>
+    <span class="pill-item">Multi-speaker</span>
   </div>
 </section>
 
-<section id="tools">
-  <div class="section-head"><h2>Everything for short-form video</h2></div>
-  <div class="feature-grid">
-    <div class="feature"><b>✂ AI clip finder</b><p>Viral-moment detection with hook, flow, value and trend scoring.</p></div>
-    <div class="feature"><b>💬 Animated captions</b><p>7 styles — Hormozi, Beast, Leon — with word-level highlight.</p></div>
-    <div class="feature"><b>🎯 Smart reframe</b><p>Face-tracked 9:16 crop that keeps the speaker in frame.</p></div>
-    <div class="feature"><b>⬇ Export clips</b><p>MP4 + SRT downloads, bulk queue, live progress tracking.</p></div>
+<section id="batch">
+  <div class="sec-kicker">Example batch</div>
+  <h2 class="sec-title">Three clips, one 4-minute video.</h2>
+  <p class="sec-sub">Every moment ships with a virality score, a hook line, an on-screen headline and a caption file.</p>
+  <div class="batch-grid">
+    <a class="batch-card" href="/dashboard">
+      <div class="batch-thumb" style="background:linear-gradient(135deg,#1b4b5d,#0b9eaa)"><span class="score-badge">⚡ 94</span></div>
+      <div class="batch-body"><h3>The truth about quitting your job</h3><div class="time">0:40 – 1:16</div><p class="hook">"Nobody tells you this before you hand in your notice…"</p></div>
+    </a>
+    <a class="batch-card" href="/dashboard">
+      <div class="batch-thumb" style="background:linear-gradient(135deg,#0649a4,#11a9e4)"><span class="score-badge">⚡ 91</span></div>
+      <div class="batch-body"><h3>The clip that changed everything</h3><div class="time">1:11 – 1:52</div><p class="hook">"I posted this at 2am and woke up to a million views…"</p></div>
+    </a>
+    <a class="batch-card" href="/dashboard">
+      <div class="batch-thumb" style="background:linear-gradient(135deg,#3a2b52,#9c5c42)"><span class="score-badge">⚡ 88</span></div>
+      <div class="batch-body"><h3>Stop renting your audience</h3><div class="time">3:58 – 4:28</div><p class="hook">"If the algorithm owns your reach, you own nothing…"</p></div>
+    </a>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-kicker">How it works</div>
+  <h2 class="sec-title">Three steps between a long video and a feed full of clips.</h2>
+  <p class="sec-sub">No editing skills needed. Upload, wait, download.</p>
+  <div class="steps">
+    <div class="step"><div class="num">01</div><h3>Drop the video</h3><p>Upload a file or paste a YouTube link. Long-form podcasts, interviews, streams — up to 2 GB.</p></div>
+    <div class="step"><div class="num">02</div><h3>The AI hunts moments</h3><p>Every segment is scored on hook, flow, value and trend. Below 75 gets thrown out. Only the best survive.</p></div>
+    <div class="step"><div class="num">03</div><h3>Clips come back ready</h3><p>9:16 reframe, karaoke captions, headline overlay and a clean SRT per clip. Download MP4s and post.</p></div>
+  </div>
+</section>
+
+<section id="creators">
+  <div class="sec-kicker">Built for creators</div>
+  <h2 class="sec-title">Everything that decides whether a clip performs.</h2>
+  <p class="sec-sub">The details that separate a scroll-past from a share.</p>
+  <div class="creator-grid">
+    <div class="creator-card"><div class="icon">🎯</div><h3>Face-tracked reframe</h3><p>Smart detection with hysteresis, smoothing and scene-cut handling so the face never leaves the frame.</p></div>
+    <div class="creator-card"><div class="icon">💬</div><h3>Karaoke captions</h3><p>Word-by-word tracking in six styles. Burn-in files fail loudly, never silently ship a captionless clip.</p></div>
+    <div class="creator-card"><div class="icon">👥</div><h3>Multi-speaker layouts</h3><p>Single, 2-up split, 3-up and 4-up grids with aspect-correct panel crops so nobody gets stretched.</p></div>
+    <div class="creator-card"><div class="icon">⚡</div><h3>Harsh viral scoring</h3><p>A 0-100 score with four sub-scores — hook, flow, value, trend — so you can see exactly why a moment was picked.</p></div>
+    <div class="creator-card"><div class="icon">🔇</div><h3>Silence trimming</h3><p>Leading and trailing silence over 0.8s gets cut, so the hook lands on the first frame.</p></div>
+    <div class="creator-card"><div class="icon">📱</div><h3>Platform-ready output</h3><p>1080 × 1920, H.264, AAC, accurate seeking. No A/V drift, no sub-HD delivery.</p></div>
   </div>
 </section>
 
 <footer><div class="foot">
   <span>© 2026 JpClips — AI video clipping studio</span>
-  <a href="/dashboard" style="color:var(--accent)">Launch the app →</a>
+  <a href="/dashboard">Launch the app →</a>
 </div></footer>
 
 <form id="upform" action="/workflow" method="post" enctype="multipart/form-data" style="display:none">
