@@ -144,6 +144,7 @@
             <select name="provider" id="provider" class="os-select w-full px-3 py-2.5 text-[13.5px]">
               <option value="groq" selected>⚡ Groq (FREE)</option>
               <option value="openai">🧠 OpenAI (Recommended ⭐)</option>
+              <option value="gemini">✨ Gemini (Google)</option>
             </select>
           </div>
         </div>
@@ -152,6 +153,7 @@
           <div class="grid grid-cols-2 gap-4">
             <input type="password" id="groq_key" name="groq_key" placeholder="Groq key (gsk_…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
             <input type="password" id="openai_key" name="openai_key" placeholder="OpenAI key (sk-…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
+            <input type="password" id="gemini_key" name="gemini_key" placeholder="Gemini key (AI…)" class="os-input px-3 py-2.5 text-[13px] placeholder:text-os-faint">
           </div>
         </div>
         <div>
@@ -249,16 +251,19 @@
 
   // persist keys
   try {
-    var gk = localStorage.getItem('groq_key'), ok = localStorage.getItem('openai_key');
+    var gk = localStorage.getItem('groq_key'), ok = localStorage.getItem('openai_key'), gmk = localStorage.getItem('gemini_key');
     if (gk) document.getElementById('groq_key').value = gk;
     if (ok) document.getElementById('openai_key').value = ok;
+    if (gmk) document.getElementById('gemini_key').value = gmk;
   } catch(e){}
   document.getElementById('genform').addEventListener('submit', function(){
     try {
       var g = document.getElementById('groq_key').value.trim();
       var o = document.getElementById('openai_key').value.trim();
+      var gm = document.getElementById('gemini_key').value.trim();
       if (g) localStorage.setItem('groq_key', g);
       if (o) localStorage.setItem('openai_key', o);
+      if (gm) localStorage.setItem('gemini_key', gm);
     } catch(e){}
     genbtn.disabled = true;
     genbtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> starting…';
