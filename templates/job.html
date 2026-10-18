@@ -1,522 +1,266 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JpClips — Turn long videos into scroll-stopping clips</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts: Inter & Montserrat -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,800;0,900;1,900&display=swap" rel="stylesheet">
-  <!-- JSZip & FileSaver for automatic source code export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              lime: '#b9f36b',
-              limeDark: '#9de043',
-              dark: '#0a0a0f',
-              card: '#12121c',
-              border: '#1f1f30',
-              accent: '#ff6b00'
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            display: ['Montserrat', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
-  
-  <style>
-    body {
-      background-color: #0a0a0f;
-      color: #f3f4f6;
-      font-family: 'Inter', sans-serif;
-    }
-    
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #0a0a0f;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1f1f30;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #b9f36b;
-    }
+{% extends "base.html" %}
+{% set active = 'generator' %}
+{% block title %}JpClips — processing{% endblock %}
 
-    .lime-glow {
-      box-shadow: 0 0 25px rgba(185, 243, 107, 0.25);
-    }
-    .lime-glow-sm {
-      box-shadow: 0 0 12px rgba(185, 243, 107, 0.2);
-    }
-    
-    /* Glassmorphism */
-    .glass-panel {
-      background: rgba(18, 18, 28, 0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-    }
-    
-    /* Caption Animations */
-    @keyframes popIn {
-      0% { transform: scale(0.85); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .caption-word-active {
-      animation: popIn 0.15s ease-out forwards;
-      display: inline-block;
-    }
-  </style>
-</head>
-<body class="min-h-screen flex flex-col">
-<header class="sticky top-0 z-50 glass-panel border-b border-brand-border/60 px-4 lg:px-8 py-3.5">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-      <!-- Logo -->
-      <a href="/" class="flex items-center gap-2.5 group">
-        <div class="w-10 h-10 rounded-xl bg-brand-lime flex items-center justify-center text-black font-extrabold text-xl shadow-lg shadow-brand-lime/20 group-hover:scale-105 transition-transform">
-          <i class="fa-solid font-bold fa-bolt text-lg"></i>
+{% block content %}
+<div class="px-6 py-8 max-w-[1400px] mx-auto">
+
+  <!-- ===== PROCESSING VIEW ===== -->
+  <div id="view-processing">
+    <div class="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5">
+
+      <!-- live analysis -->
+      <div class="bg-os-card border border-os-border rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2 text-[13.5px] font-semibold text-white">
+            <i class="fa-solid fa-wave-square text-os-orange text-[13px]"></i> live analysis
+          </div>
+          <span id="proc-badge" class="text-[10px] font-bold tracking-[.15em] text-os-orange bg-os-orange/10 border border-os-orange/30 rounded-full px-3 py-1">PROCESSING</span>
         </div>
-        <div class="flex flex-col">
-          <span class="text-xl font-black tracking-tight text-white flex items-center gap-1">
-            Jp<span class="text-brand-lime">Clips</span>
-            <span class="text-[10px] bg-brand-lime/10 text-brand-lime border border-brand-lime/30 px-1.5 py-0.5 rounded font-mono font-semibold">PRO v2.6</span>
-          </span>
-          <span class="text-[10px] text-gray-400 -mt-1 tracking-wider uppercase">OpusClip-Quality AI</span>
+
+        <!-- video scan preview -->
+        <div class="relative rounded-xl overflow-hidden bg-black border border-os-border aspect-video">
+          <div class="w-full h-full bg-gradient-to-br from-os-card2 to-black"></div>
+          <div class="absolute inset-0 pointer-events-none">
+            <div class="scanline"></div>
+            <div class="absolute inset-4 border border-os-orange/25 rounded-lg"></div>
+            <div class="absolute top-6 left-6 flex items-center gap-2 text-[10.5px] font-bold tracking-[.18em] text-os-orange">
+              <i class="fa-solid fa-crosshairs"></i> SCANNING CONTENT…
+            </div>
+            <div class="absolute top-6 right-6 text-[10.5px] font-bold tracking-[.18em] text-white/80 bg-black/50 rounded-full px-3 py-1 border border-white/10">
+              VIRAL_DETECTION: ACTIVE
+            </div>
+            <div class="absolute bottom-6 left-6 space-y-1.5 text-[10.5px] font-bold tracking-[.14em]">
+              <div class="text-os-orange"><i class="fa-solid fa-chevron-right text-[9px] mr-1"></i> ANALYSIS_THREAD_01: <span class="text-white/90">ACTIVE</span></div>
+              <div class="text-os-orange"><i class="fa-solid fa-chevron-right text-[9px] mr-1"></i> AUDIO_TRANSCRIPT: <span class="text-white/90">PROCESSING</span></div>
+            </div>
+            <div class="absolute bottom-6 right-6 flex items-end gap-1 h-6">
+              <div class="w-1 bg-os-orange/80 rounded pulse-dot" style="height:60%"></div>
+              <div class="w-1 bg-os-orange/80 rounded pulse-dot" style="height:100%;animation-delay:.2s"></div>
+              <div class="w-1 bg-os-orange/80 rounded pulse-dot" style="height:40%;animation-delay:.4s"></div>
+              <div class="w-1 bg-os-orange/80 rounded pulse-dot" style="height:75%;animation-delay:.6s"></div>
+            </div>
+          </div>
         </div>
-      </a>
 
-      <!-- Center Navigation Links -->
-      <nav class="hidden md:flex items-center gap-1 bg-[#0f0f18] p-1 rounded-xl border border-brand-border">
-        <a href="/" id="nav-landing" 
-          <i class="fa-solid fa-house mr-2 text-xs"></i>Home
-        </a>
-        <a href="/dashboard" id="nav-workflow" 
-          <i class="fa-solid fa-wand-magic-sparkles mr-2 text-xs text-brand-lime"></i>New Clip
-        </a>
-        <a href="/jobs" id="nav-jobs" 
-          <i class="fa-solid fa-layer-group mr-2 text-xs"></i>My Projects
-        </a>
-        
-      </nav>
+        <!-- progress -->
+        <div class="mt-5">
+          <div class="flex items-center justify-between text-[12.5px] mb-2">
+            <span id="proc-step" class="text-gray-300 font-medium">Starting…</span>
+            <span id="proc-pct" class="text-os-orange font-bold">0%</span>
+          </div>
+          <div class="h-2 bg-os-card2 rounded-full overflow-hidden">
+            <div id="proc-bar" class="h-full bg-gradient-to-r from-os-orangeDark to-os-orange rounded-full transition-all duration-500" style="width:0%"></div>
+          </div>
+          <div id="proc-detail" class="text-[12px] text-os-faint mt-2"></div>
+        </div>
 
-      <!-- Right CTAs -->
-      <div class="flex items-center gap-3">
-        <button onclick="downloadSourceZip()" class="hidden sm:flex items-center gap-2 bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-lime border border-brand-lime/40 px-3.5 py-2 rounded-xl text-xs font-bold transition-all">
-          <i class="fa-solid fa-file-zipper text-sm"></i>
-          <span>Download Backend ZIP</span>
-        </a>
-        <button onclick="switchView('workflow')" class="bg-brand-lime hover:bg-brand-limeDark text-black font-extrabold px-4 py-2 rounded-xl text-sm transition-all transform hover:scale-[1.02] shadow-md shadow-brand-lime/20 flex items-center gap-2">
-          <span>Create Clips</span>
-          <i class="fa-solid fa-arrow-right text-xs"></i>
-        </a>
+        <!-- system logs -->
+        <button id="logs-toggle" class="flex items-center gap-2 text-[11px] font-semibold tracking-[.18em] text-os-muted hover:text-white mt-5 mb-2 transition-colors">
+          <i class="fa-solid fa-terminal"></i> SYSTEM LOGS <i class="fa-solid fa-chevron-down text-[9px]" id="logs-chev"></i>
+        </button>
+        <div id="logs-body" class="bg-black/60 border border-os-border rounded-xl p-4 h-[190px] overflow-y-auto">
+          <div id="logs-lines" class="space-y-0.5"></div>
+        </div>
+      </div>
+
+      <!-- generated shorts (waiting) -->
+      <div class="bg-os-card border border-os-border rounded-2xl p-5">
+        <div class="text-[13.5px] font-semibold text-white mb-6">generated shorts</div>
+        <div id="waiting" class="flex flex-col items-center justify-center py-20 text-center">
+          <div class="spinner mb-5"></div>
+          <div class="text-[13.5px] text-gray-300 font-medium">waiting for clips…</div>
+          <div class="text-[12px] text-os-faint mt-2 max-w-[220px]">They appear here one by one as each finishes rendering.</div>
+        </div>
+        <div id="mini-clips" class="space-y-3"></div>
+        <div class="mt-8 bg-os-card2 border border-os-border rounded-xl p-4">
+          <div class="eyebrow !text-[10px] mb-1.5">first clips</div>
+          <p class="text-[12.5px] text-os-muted leading-relaxed">Hang on — Clip Generator is finding the moments and cutting vertical shorts.</p>
+        </div>
       </div>
     </div>
-  </header>
-<main class="flex-1 max-w-7xl mx-auto w-full px-4 lg:px-8 py-8">
-<section id="view-processing" class=" space-y-8 max-w-3xl mx-auto py-8">
-      
-      <div class="bg-brand-card p-8 rounded-3xl border border-brand-border text-center space-y-6 lime-glow-sm relative overflow-hidden">
-        
-        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gray-800">
-          <div id="processing-bar" class="h-full bg-gradient-to-r from-brand-lime to-emerald-400 transition-all duration-300" style="width: 15%"></div>
-        </div>
+  </div>
 
-        <div class="w-20 h-20 rounded-full bg-brand-lime/10 text-brand-lime flex items-center justify-center mx-auto relative">
-          <i class="fa-solid fa-gear text-3xl animate-spin"></i>
-          <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-brand-lime animate-ping"></span>
-        </div>
-
-        <div class="space-y-2">
-          <h2 class="text-2xl font-black text-white">Your Video is Processing...</h2>
-          <p class="text-xs text-gray-400">Executing OpusClip pipeline: Scene cut detection, YuNet face tracking, Whisper karaoke, and harsh viral scoring.</p>
-        </div>
-
-        <!-- Animated Progress Steps -->
-        <div class="space-y-3 text-left max-w-md mx-auto pt-4">
-          
-          <div id="step-1" class="step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-brand-border text-xs">
-            <i class="fa-solid fa-circle-notch text-brand-lime animate-spin"></i>
-            <span class="font-bold text-gray-200">1. Scene Cut & HSV Histogram Analysis</span>
-            <span class="ml-auto text-[10px] font-mono text-brand-lime font-bold">RUNNING</span>
-          </div>
-
-          <div id="step-2" class="step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f]/50 border border-brand-border text-xs text-gray-500">
-            <i class="fa-regular fa-circle text-gray-600"></i>
-            <span>2. Groq Whisper Word-Level Timestamps</span>
-            <span class="ml-auto text-[10px] font-mono">QUEUED</span>
-          </div>
-
-          <div id="step-3" class="step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f]/50 border border-brand-border text-xs text-gray-500">
-            <i class="fa-regular fa-circle text-gray-600"></i>
-            <span>3. Viral Moment Prompt Scoring (Harsh >75)</span>
-            <span class="ml-auto text-[10px] font-mono">QUEUED</span>
-          </div>
-
-          <div id="step-4" class="step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f]/50 border border-brand-border text-xs text-gray-500">
-            <i class="fa-regular fa-circle text-gray-600"></i>
-            <span>4. YuNet Face Tracking & Hysteresis Smooth</span>
-            <span class="ml-auto text-[10px] font-mono">QUEUED</span>
-          </div>
-
-          <div id="step-5" class="step-item flex items-center gap-3 p-3 rounded-xl bg-[#0a0a0f]/50 border border-brand-border text-xs text-gray-500">
-            <i class="fa-regular fa-circle text-gray-600"></i>
-            <span>5. Burning Karaoke ASS & 9:16 FFmpeg Render</span>
-            <span class="ml-auto text-[10px] font-mono">QUEUED</span>
-          </div>
-
-        </div>
-
-        <!-- Terminal Log Tail -->
-        <div class="bg-black/90 p-4 rounded-xl border border-brand-border text-left font-mono text-[11px] text-green-400 space-y-1 h-36 overflow-y-auto" id="terminal-logs">
-          <p class="text-gray-500">[SYSTEM] Initializing JpClips Engine v2.6...</p>
-          <p>[FFMPEG] Loading OpenCV YuNet DNN model: yunet.onnx</p>
-        </div>
-
-        <div class="text-xs text-gray-500 flex items-center justify-between pt-2">
-          <span>Job ID: <strong class="text-gray-300 font-mono" id="job-id-display">jp_8f92a1</strong></span>
-          <span>Estimated time remaining: <strong class="text-brand-lime" id="eta-display">00:24</strong></span>
-        </div>
-
-      </div>
-
-    </section>
-<section id="view-results" class=" space-y-8">
-      
-      <!-- Top Bar -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-brand-border pb-6">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded font-mono font-bold">READY TO EXPORT</span>
-            <span class="text-xs text-gray-400">Processed in 18.2s</span>
-          </div>
-          <h1 class="text-3xl font-black text-white mt-1">Generated Viral Clips (3 Clips Passed Harsh 75+ Threshold)</h1>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <button onclick="window.location='/dashboard'" class="bg-brand-card hover:bg-brand-border text-xs font-bold text-gray-200 px-4 py-2.5 rounded-xl border border-brand-border transition-colors">
-            <i class="fa-solid fa-plus mr-1"></i> Clip Another Video
-          </button>
-          <button onclick="downloadAllClipsZip()" class="bg-brand-lime hover:bg-brand-limeDark text-black font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md shadow-brand-lime/20 flex items-center gap-2">
-            <i class="fa-solid fa-file-zipper"></i> Download All MP4s (.zip)
-          </button>
-        </div>
-      </div>
-
-      <!-- Generated Clips Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        
-        <!-- Result Card 1 -->
-        <div class="bg-brand-card rounded-2xl border border-brand-border overflow-hidden flex flex-col space-y-4 p-4 hover:border-brand-lime/40 transition-all">
-          
-          <div class="relative aspect-[9/16] bg-black rounded-xl overflow-hidden border border-brand-border group">
-            <!-- Simulated Video Surface -->
-            <video id="res-video-1" class="w-full h-full object-cover" loop muted playsinline poster="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80">
-              <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
-            </video>
-            
-            <!-- Dynamic Subtitle Karaoke Overlay -->
-            <div class="absolute bottom-16 left-3 right-3 text-center pointer-events-none">
-              <span id="caption-overlay-1" class="font-display font-black text-lg uppercase bg-black/80 text-white px-3 py-1.5 rounded-lg border border-brand-lime/30 tracking-wider">
-                <span class="text-yellow-400">THIS</span> SECRET WILL CHANGE EVERYTHING
-              </span>
-            </div>
-
-            <div class="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-brand-lime/40 flex items-center gap-1.5">
-              <i class="fa-solid fa-fire text-brand-lime text-xs"></i>
-              <span class="text-xs font-black text-brand-lime">SCORE 95</span>
-            </div>
-
-            <!-- Controls Overlay -->
-            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-              <button onclick="toggleResultVideo('res-video-1')" class="w-12 h-12 rounded-full bg-brand-lime text-black flex items-center justify-center font-bold text-lg shadow-lg">
-                <i class="fa-solid fa-play ml-1"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Details & Scores -->
-          <div class="space-y-3 flex-1 flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
-                <span><i class="fa-regular fa-clock mr-1"></i>0:34.5 (12.5s - 47.0s)</span>
-                <span class="text-brand-lime font-mono font-bold">1080x1920</span>
-              </div>
-              <h3 class="font-extrabold text-white text-base">The $10M Investment Trap</h3>
-              <p class="text-xs text-gray-400 mt-1 italic">"Hook: If you are putting money in traditional accounts..."</p>
-            </div>
-
-            <!-- Virality Breakdown -->
-            <div class="bg-[#0a0a0f] p-3 rounded-xl border border-brand-border space-y-2 text-xs">
-              <div class="flex justify-between text-gray-300 font-bold">
-                <span>Sub-Score Breakdown</span>
-                <span class="text-brand-lime">95 / 100</span>
-              </div>
-              <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
-                <div>Hook: <strong class="text-white">24/25</strong></div>
-                <div>Flow: <strong class="text-white">23/25</strong></div>
-                <div>Value: <strong class="text-white">25/25</strong></div>
-                <div>Trend: <strong class="text-white">23/25</strong></div>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="grid grid-cols-2 gap-2 pt-2">
-              <button onclick="downloadSingleMP4('The_10M_Investment_Trap.mp4')" class="bg-brand-lime hover:bg-brand-limeDark text-black text-xs font-extrabold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-download"></i> MP4 Video
-              </button>
-              <button onclick="downloadSRT('The_10M_Investment_Trap.srt')" class="bg-brand-card hover:bg-brand-border text-gray-200 text-xs font-bold py-2.5 rounded-xl border border-brand-border transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-closed-captioning text-brand-lime"></i> SRT Subtitles
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Result Card 2 -->
-        <div class="bg-brand-card rounded-2xl border border-brand-border overflow-hidden flex flex-col space-y-4 p-4 hover:border-brand-lime/40 transition-all">
-          <div class="relative aspect-[9/16] bg-black rounded-xl overflow-hidden border border-brand-border group">
-            <video id="res-video-2" class="w-full h-full object-cover" loop muted playsinline poster="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80">
-              <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4" type="video/mp4">
-            </video>
-            
-            <div class="absolute bottom-16 left-3 right-3 text-center pointer-events-none">
-              <span class="font-display font-black text-lg uppercase bg-brand-accent text-white px-3 py-1.5 rounded-lg tracking-wider">
-                HUMAN JOBS ARE <span class="underline">CHANGING</span>
-              </span>
-            </div>
-
-            <div class="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-brand-lime/40 flex items-center gap-1.5">
-              <i class="fa-solid fa-fire text-brand-lime text-xs"></i>
-              <span class="text-xs font-black text-brand-lime">SCORE 89</span>
-            </div>
-
-            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-              <button onclick="toggleResultVideo('res-video-2')" class="w-12 h-12 rounded-full bg-brand-lime text-black flex items-center justify-center font-bold text-lg shadow-lg">
-                <i class="fa-solid fa-play ml-1"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="space-y-3 flex-1 flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
-                <span><i class="fa-regular fa-clock mr-1"></i>0:42.1 (88.0s - 130.1s)</span>
-                <span class="text-brand-lime font-mono font-bold">1080x1920</span>
-              </div>
-              <h3 class="font-extrabold text-white text-base">AI Workplace Revolution</h3>
-              <p class="text-xs text-gray-400 mt-1 italic">"Hook: People aren't ready for autonomous agents..."</p>
-            </div>
-
-            <div class="bg-[#0a0a0f] p-3 rounded-xl border border-brand-border space-y-2 text-xs">
-              <div class="flex justify-between text-gray-300 font-bold">
-                <span>Sub-Score Breakdown</span>
-                <span class="text-brand-lime">89 / 100</span>
-              </div>
-              <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
-                <div>Hook: <strong class="text-white">22/25</strong></div>
-                <div>Flow: <strong class="text-white">23/25</strong></div>
-                <div>Value: <strong class="text-white">22/25</strong></div>
-                <div>Trend: <strong class="text-white">22/25</strong></div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 pt-2">
-              <button onclick="downloadSingleMP4('AI_Workplace_Revolution.mp4')" class="bg-brand-lime hover:bg-brand-limeDark text-black text-xs font-extrabold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-download"></i> MP4 Video
-              </button>
-              <button onclick="downloadSRT('AI_Workplace_Revolution.srt')" class="bg-brand-card hover:bg-brand-border text-gray-200 text-xs font-bold py-2.5 rounded-xl border border-brand-border transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-closed-captioning text-brand-lime"></i> SRT Subtitles
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Result Card 3 -->
-        <div class="bg-brand-card rounded-2xl border border-brand-border overflow-hidden flex flex-col space-y-4 p-4 hover:border-brand-lime/40 transition-all">
-          <div class="relative aspect-[9/16] bg-black rounded-xl overflow-hidden border border-brand-border group">
-            <video id="res-video-3" class="w-full h-full object-cover" loop muted playsinline poster="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80">
-              <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4" type="video/mp4">
-            </video>
-            
-            <div class="absolute bottom-16 left-3 right-3 text-center pointer-events-none">
-              <span class="font-display font-black text-lg uppercase bg-black/80 text-white px-3 py-1.5 rounded-lg border border-yellow-400 tracking-wider">
-                <span class="text-yellow-400">THE 1 HABIT</span> FOR FOCUS
-              </span>
-            </div>
-
-            <div class="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-brand-lime/40 flex items-center gap-1.5">
-              <i class="fa-solid fa-fire text-brand-lime text-xs"></i>
-              <span class="text-xs font-black text-brand-lime">SCORE 81</span>
-            </div>
-
-            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-              <button onclick="toggleResultVideo('res-video-3')" class="w-12 h-12 rounded-full bg-brand-lime text-black flex items-center justify-center font-bold text-lg shadow-lg">
-                <i class="fa-solid fa-play ml-1"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="space-y-3 flex-1 flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
-                <span><i class="fa-regular fa-clock mr-1"></i>0:28.0 (204s - 232s)</span>
-                <span class="text-brand-lime font-mono font-bold">1080x1920</span>
-              </div>
-              <h3 class="font-extrabold text-white text-base">Unstoppable Morning Habit</h3>
-              <p class="text-xs text-gray-400 mt-1 italic">"Hook: I spent 10 years working 80 hours..."</p>
-            </div>
-
-            <div class="bg-[#0a0a0f] p-3 rounded-xl border border-brand-border space-y-2 text-xs">
-              <div class="flex justify-between text-gray-300 font-bold">
-                <span>Sub-Score Breakdown</span>
-                <span class="text-brand-lime">81 / 100</span>
-              </div>
-              <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
-                <div>Hook: <strong class="text-white">20/25</strong></div>
-                <div>Flow: <strong class="text-white">21/25</strong></div>
-                <div>Value: <strong class="text-white">21/25</strong></div>
-                <div>Trend: <strong class="text-white">19/25</strong></div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 pt-2">
-              <button onclick="downloadSingleMP4('Unstoppable_Morning_Habit.mp4')" class="bg-brand-lime hover:bg-brand-limeDark text-black text-xs font-extrabold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-download"></i> MP4 Video
-              </button>
-              <button onclick="downloadSRT('Unstoppable_Morning_Habit.srt')" class="bg-brand-card hover:bg-brand-border text-gray-200 text-xs font-bold py-2.5 rounded-xl border border-brand-border transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-closed-captioning text-brand-lime"></i> SRT Subtitles
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- ================= 5. MY PROJECTS HUB VIEW ================= -->
-    
-</main>
-<footer class="border-t border-brand-border/60 bg-[#07070b] py-8 px-4 mt-auto">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-white">JpClips AI</span>
-        <span>•</span>
-        <span>Built with Groq Whisper & Llama 3.3, YuNet OpenCV, and FFmpeg</span>
-      </div>
-      <div class="flex items-center gap-4">
-        
-        <a href="/" class="hover:text-white">Home</a>
-        <a href="/dashboard" class="hover:text-white">Create Clips</a>
+  <!-- ===== RESULTS VIEW ===== -->
+  <div id="view-results" class="hidden">
+    <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+      <div class="text-[15px] font-semibold text-white">generated shorts</div>
+      <div class="flex items-center gap-2.5">
+        <span id="clip-count" class="text-[10.5px] font-bold tracking-[.12em] text-os-muted bg-os-card border border-os-border rounded-full px-3 py-1.5"></span>
+        <button id="dl-all" class="flex items-center gap-2 text-[12.5px] font-semibold text-gray-200 bg-os-card border border-os-border rounded-full px-4 py-2 hover:border-os-border2 transition-colors">
+          <i class="fa-solid fa-download text-[11px]"></i> download all
+        </button>
+        <button onclick="alert('Scheduling is coming soon')" class="btn-orange rounded-full px-4 py-2 text-[12.5px]">
+          <i class="fa-regular fa-calendar-plus text-[11px] mr-1"></i> schedule week
+        </button>
       </div>
     </div>
-  </footer>
 
+    <div class="bg-os-orange/10 border border-os-orange/30 rounded-xl px-4 py-3 mb-5 text-[13px] text-gray-200">
+      <span class="font-semibold">Like these clips?</span> They were rendered at 1080×1920 with karaoke captions — ready to post.
+    </div>
+
+    <div id="clip-list" class="space-y-5 max-w-[980px]"></div>
+  </div>
+
+  <!-- error -->
+  <div id="view-error" class="hidden max-w-[720px] mx-auto py-16 text-center">
+    <div class="w-14 h-14 mx-auto rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-5">
+      <i class="fa-solid fa-triangle-exclamation text-red-400 text-xl"></i>
+    </div>
+    <h2 class="serif-heading text-[32px] text-white mb-3">Something went wrong</h2>
+    <p id="error-msg" class="text-os-muted text-[14px] mb-6"></p>
+    <a href="/dashboard" class="btn-orange rounded-full px-6 py-3 text-[14px] inline-block">try again</a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-(function(){
-  var path = window.location.pathname;
-  var id = null;
-  if (path === '/' ) id = 'nav-landing';
-  else if (path === '/dashboard' || path === '/workflow') id = 'nav-workflow';
-  else if (path === '/jobs' || path.indexOf('/job') === 0) id = 'nav-jobs';
-  if (id) {
-    var el = document.getElementById(id);
-    if (el) { el.classList.remove('text-gray-400'); el.classList.add('text-white','bg-brand-border/60'); }
-  }
-  // Fix nav links: ensure they're <a> tags with href
-  document.querySelectorAll('.nav-btn').forEach(function(b){
-    if (b.tagName === 'BUTTON') {
-      var a = document.createElement('a');
-      a.className = b.className; a.id = b.id; a.innerHTML = b.innerHTML;
-      if (b.id === 'nav-landing') a.href = '/';
-      else if (b.id === 'nav-workflow') a.href = '/dashboard';
-      else if (b.id === 'nav-jobs') a.href = '/jobs';
-      b.parentNode.replaceChild(a, b);
-    }
-  });
-})();
-</script>
-
-
-<script>
-var JPCLIPS_JID = "{{ jid }}";
 (function(){
   var jid = "{{ jid }}";
-  var procView = document.getElementById('view-processing');
-  var resView = document.getElementById('view-results');
-  function show(view){ ['view-processing','view-results'].forEach(function(v){
-    var el = document.getElementById(v); if(el) el.classList.add('hidden'); });
-    var t = document.getElementById(view); if(t) t.classList.remove('hidden'); }
+  var procStep = document.getElementById('proc-step'), procPct = document.getElementById('proc-pct');
+  var procBar = document.getElementById('proc-bar'), procDetail = document.getElementById('proc-detail');
+  var logsLines = document.getElementById('logs-lines'), lastLogLen = 0;
+  var seenClips = {};
 
+  var lt = document.getElementById('logs-toggle'), lb = document.getElementById('logs-body'), lc = document.getElementById('logs-chev');
+  lt.onclick = function(){ var h = lb.classList.toggle('hidden'); lc.style.transform = h ? 'rotate(-90deg)' : ''; };
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtTime(s){ s = Math.max(0, Math.round(s||0)); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+
+  function renderLogs(log){
+    if (!log) return;
+    var lines = log.trim().split('\n');
+    if (lines.length === lastLogLen) return;
+    lastLogLen = lines.length;
+    logsLines.innerHTML = lines.slice(-40).map(function(l){
+      var m = l.match(/^(\d{2}:\d{2}:\d{2})\s?(.*)$/);
+      var t = m ? m[1] : '', b = m ? m[2] : l;
+      var cls = /error|fail/i.test(b) ? 'text-red-400' : (/done|✓|found/i.test(b) ? 'text-emerald-400' : 'text-gray-400');
+      return '<div class="log-line"><span class="text-os-faint mr-2">' + esc(t) + '</span><span class="' + cls + '">' + esc(b) + '</span></div>';
+    }).join('');
+    lb.scrollTop = lb.scrollHeight;
+  }
+
+  function miniClipCard(c){
+    var id = 'mini-' + c.file;
+    if (document.getElementById(id)) return;
+    var d = document.createElement('div');
+    d.id = id;
+    d.className = 'bg-os-card2 border border-os-border rounded-xl p-3 flex items-center gap-3';
+    d.innerHTML =
+      '<video src="/preview/' + jid + '/' + encodeURIComponent(c.file) + '" class="w-12 h-[68px] object-cover rounded-lg bg-black" muted preload="metadata"></video>' +
+      '<div class="flex-1 min-w-0"><div class="text-[13px] font-semibold text-white truncate">' + esc(c.title) + '</div>' +
+      '<div class="text-[11px] text-os-orange font-bold mt-0.5">VIRAL ' + (c.score||0) + '/100</div></div>' +
+      '<a href="/dl/' + jid + '/' + encodeURIComponent(c.file) + '" class="text-os-orange text-[12px] font-semibold"><i class="fa-solid fa-download"></i></a>';
+    document.getElementById('mini-clips').appendChild(d);
+    document.getElementById('waiting').style.display = 'none';
+  }
+
+  function clipCard(c, i){
+    var subs = c.subs || {};
+    var ytDesc = c.title + '\n\n#shorts #viral';
+    var ttDesc = (c.title || '') + ' #shorts #viral #fyp';
+    var subScore = subs.hook ? ('Hook ' + subs.hook + '/25 · Flow ' + (subs.flow||0) + '/25 · Value ' + (subs.value||0) + '/25 · Trend ' + (subs.trend||0) + '/25') : '';
+    return '' +
+    '<div class="bg-os-card border border-os-border rounded-2xl p-5">' +
+      '<div class="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5">' +
+        '<div class="relative">' +
+          '<video src="/preview/' + jid + '/' + encodeURIComponent(c.file) + '" controls preload="metadata" class="w-full aspect-[9/16] object-cover rounded-xl bg-black border border-os-border"></video>' +
+          '<span class="absolute top-2.5 left-2.5 text-[10px] font-bold tracking-wider bg-black/70 border border-white/15 rounded-full px-2.5 py-1">CLIP ' + (i+1) + '</span>' +
+          '<span class="absolute top-2.5 right-2.5 text-[10px] font-bold bg-os-orange text-[#1a0e05] rounded-full px-2.5 py-1">VIRAL ' + (c.score||0) + '/100</span>' +
+        '</div>' +
+        '<div class="min-w-0">' +
+          '<h3 class="text-[17px] font-bold text-white leading-snug">' + esc(c.title) + '</h3>' +
+          '<p class="text-[13px] text-os-muted mt-1.5 leading-relaxed">' + fmtTime(c.start) + ' – ' + fmtTime(c.end) + (subScore ? ' · ' + subScore : '') + '</p>' +
+          '<div class="flex gap-2 mt-2.5 flex-wrap">' +
+            '<span class="text-[10px] font-bold tracking-wider text-os-muted bg-os-card2 border border-os-border rounded px-2 py-1">1080×1920</span>' +
+            '<span class="text-[10px] font-bold tracking-wider text-os-muted bg-os-card2 border border-os-border rounded px-2 py-1">#SHORTS</span>' +
+            '<span class="text-[10px] font-bold tracking-wider text-os-muted bg-os-card2 border border-os-border rounded px-2 py-1">#VIRAL</span>' +
+          '</div>' +
+          '<div class="mt-3.5 space-y-2">' +
+            '<div class="flex items-center gap-2 bg-os-card2 border border-os-border rounded-xl px-3 py-2">' +
+              '<span class="text-[10px] font-bold text-os-faint w-16 shrink-0">YOUTUBE</span>' +
+              '<span class="flex-1 text-[12px] text-gray-300 truncate">' + esc(c.title) + '</span>' +
+              '<button class="copybtn text-os-muted hover:text-os-orange shrink-0" data-copy="' + esc(ytDesc) + '"><i class="fa-regular fa-copy text-[13px]"></i></button>' +
+            '</div>' +
+            '<div class="flex items-center gap-2 bg-os-card2 border border-os-border rounded-xl px-3 py-2">' +
+              '<span class="text-[10px] font-bold text-os-faint w-16 shrink-0">TIKTOK · IG</span>' +
+              '<span class="flex-1 text-[12px] text-gray-300 truncate">' + esc(ttDesc) + '</span>' +
+              '<button class="copybtn text-os-muted hover:text-os-orange shrink-0" data-copy="' + esc(ttDesc) + '"><i class="fa-regular fa-copy text-[13px]"></i></button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4">' +
+            [['edit clip','fa-scissors'],['reframing','fa-crop-simple'],['auto edit','fa-wand-magic-sparkles'],['subtitles','fa-closed-captioning'],['edit hook','fa-font'],['dub voice','fa-microphone']].map(function(a){
+              return '<button onclick="alert(\'Coming soon\')" class="flex flex-col items-center gap-1.5 bg-os-card2 border border-os-border rounded-xl py-3 text-[10.5px] text-os-muted hover:text-white hover:border-os-border2 transition-colors"><i class="fa-solid ' + a[1] + ' text-os-orange text-[13px]"></i>' + a[0] + '</button>';
+            }).join('') +
+          '</div>' +
+          '<div class="grid grid-cols-2 gap-2 mt-2">' +
+            '<button onclick="alert(\'Direct posting is coming soon — download and post for now\')" class="btn-orange rounded-xl py-3 text-[13px]"><i class="fa-solid fa-share-nodes mr-1.5"></i>post</button>' +
+            '<a href="/dl/' + jid + '/' + encodeURIComponent(c.file) + '" class="flex items-center justify-center gap-2 bg-os-card2 border border-os-border rounded-xl py-3 text-[13px] font-semibold text-gray-200 hover:border-os-border2 transition-colors"><i class="fa-solid fa-download text-os-orange"></i>download</a>' +
+          '</div>' +
+          (c.srt ? '<a href="/dl/' + jid + '/' + encodeURIComponent(c.srt) + '" class="inline-flex items-center gap-1.5 text-[12px] text-os-muted hover:text-os-orange mt-2.5 transition-colors"><i class="fa-solid fa-file-lines"></i>download SRT</a>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('.copybtn');
+    if (b && b.getAttribute('data-copy')){
+      navigator.clipboard.writeText(b.getAttribute('data-copy')).then(function(){
+        b.innerHTML = '<i class="fa-solid fa-check text-emerald-400 text-[13px]"></i>';
+        setTimeout(function(){ b.innerHTML = '<i class="fa-regular fa-copy text-[13px]"></i>'; }, 1500);
+      });
+    }
+  });
+
+  var done = false, timer = null;
   function poll(){
-    fetch('/api/job/'+jid).then(r=>r.json()).then(function(st){
-      if (st.status === 'running') {
-        show('view-processing');
-        var bar = document.getElementById('processing-bar');
-        if (bar && st.progress != null) bar.style.width = st.progress + '%';
-        var pct = document.querySelector('#view-processing .progress-pct');
-        if (pct && st.progress != null) pct.textContent = st.progress + '%';
-        var step = document.querySelector('#view-processing .step-label');
-        if (step && st.step) step.textContent = st.step;
-        setTimeout(poll, 2000);
-      } else if (st.status === 'done') {
-        show('view-results');
-        renderResults(st.result);
+    fetch('/api/job/' + jid).then(function(r){ return r.json(); }).then(function(st){
+      var status = st.status || 'unknown';
+      renderLogs(st.log || '');
+      if (status === 'running' || status === 'unknown'){
+        procStep.textContent = st.step || 'Working…';
+        procDetail.textContent = st.detail || '';
+        var p = Math.max(0, Math.min(100, st.progress || 0));
+        procPct.textContent = p + '%';
+        procBar.style.width = p + '%';
+        (st.result || []).forEach(function(c){ if (!seenClips[c.file]){ seenClips[c.file] = 1; miniClipCard(c); } });
+        timer = setTimeout(poll, 2000);
+      } else if (status === 'done'){
+        showResults(st.result || []);
       } else {
-        show('view-processing');
-        var m = document.querySelector('main');
-        if (m) m.insertAdjacentHTML('beforeend',
-          '<div class="bg-red-500/10 border border-red-500/30 text-red-300 p-4 rounded-xl mt-4">Error: '+((st&&st.error)||'Unknown')+'</div>');
+        document.getElementById('view-processing').classList.add('hidden');
+        document.getElementById('view-error').classList.remove('hidden');
+        document.getElementById('error-msg').textContent = st.error || 'The job failed with no message.';
       }
-    }).catch(function(){ setTimeout(poll, 3000); });
+    }).catch(function(){ timer = setTimeout(poll, 4000); });
   }
-  function renderResults(result){
-    var c = document.getElementById('results-grid') || document.getElementById('view-results');
-    if (!c || !result) return;
-    var clips = result.clips || result || [];
-    if (!Array.isArray(clips)) clips = [clips];
-    var grid = document.createElement('div');
-    grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6';
-    clips.forEach(function(clip){
-      if (!clip || !clip.file) return;
-      var card = document.createElement('div');
-      card.className = 'bg-brand-card border border-brand-border rounded-2xl overflow-hidden';
-      card.innerHTML =
-        '<video src="/preview/'+jid+'/'+clip.file+'" class="w-full aspect-[9/16] max-h-[480px] object-cover bg-black" controls preload="metadata"></video>'+
-        '<div class="p-4"><h3 class="font-bold text-white text-sm">'+(clip.title||'Clip')+'</h3>'+
-        '<div class="text-brand-lime font-mono text-sm mt-1">⚡ '+(clip.score||0)+'</div>'+
-        '<div class="flex gap-2 mt-3">'+
-        '<a href="/dl/'+jid+'/'+clip.file+'" class="bg-brand-lime text-black px-4 py-2 rounded-lg text-sm font-bold">MP4</a>'+
-        (clip.srt?'<a href="/dl/'+jid+'/'+clip.srt+'" class="border border-brand-border text-gray-200 px-4 py-2 rounded-lg text-sm">SRT</a>':'')+
-        '</div></div>';
-      grid.appendChild(card);
-    });
-    c.appendChild(grid);
+
+  function showResults(res){
+    if (done) return; done = true;
+    clearTimeout(timer);
+    document.getElementById('view-processing').classList.add('hidden');
+    document.getElementById('view-results').classList.remove('hidden');
+    document.getElementById('clip-count').textContent = res.length + ' CLIPS';
+    document.getElementById('clip-list').innerHTML = res.map(clipCard).join('');
+    document.getElementById('dl-all').onclick = function(){
+      res.forEach(function(c, i){
+        setTimeout(function(){
+          var a = document.createElement('a');
+          a.href = '/dl/' + jid + '/' + encodeURIComponent(c.file);
+          a.download = c.file; document.body.appendChild(a); a.click(); a.remove();
+        }, i * 800);
+      });
+    };
+    window.scrollTo({top: 0, behavior: 'smooth'});
   }
+
   poll();
 })();
 </script>
-
-</body>
-</html>
+{% endblock %}
