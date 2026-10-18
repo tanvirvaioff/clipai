@@ -154,7 +154,7 @@ footer{border-top:1px solid var(--border);padding:34px 0 44px;margin-top:40px}
           </div>
           <button type="submit" class="btn-go">get free clips <i class="fa-solid fa-arrow-right" style="font-size:12px"></i></button>
           <button type="button" class="btn-up" id="uploadBtn"><i class="fa-solid fa-upload"></i> upload a file</button>
-          <input type="file" id="fileInput" accept="video/*,audio/*" style="display:none">
+          <input type="file" id="fileInput" name="video" accept="video/*,audio/*" style="display:none">
         </div>
       </form>
       <div class="free-row">
@@ -261,7 +261,7 @@ footer{border-top:1px solid var(--border);padding:34px 0 44px;margin-top:40px}
   fileInput.addEventListener('change', function(){
     if(!fileInput.files.length) return;
     var fd = new FormData();
-    fd.append('video_file', fileInput.files[0]);
+    fd.append('video', fileInput.files[0]);
     var btn = document.getElementById('uploadBtn');
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> uploading…';
     btn.disabled = true;
